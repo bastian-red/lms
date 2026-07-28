@@ -1,0 +1,29 @@
+{
+  "name": "@lms/certificates",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "pdfkit": "^0.19.1"
+  },
+  "devDependencies": {
+    "@lms/config": "workspace:*",
+    "@types/node": "^20.17.6",
+    "@types/pdfkit": "^0.17.6",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

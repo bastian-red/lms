@@ -1,0 +1,144 @@
+# Local development infrastructure: Postgres, Redis, Mailhog (test SMTP).
+# Usage: docker compose -f infra/docker-compose.yml up -d
+#
+# Ports are deliberately off the defaults. The dev host runs a system PostgreSQL
+# on 5432, project001's stack on 5434/6381 and project002's on 5433/6380, so this
+# project takes 5435/6382 and every URL in .env.example matches.
+#
+# `name` is explicit on purpose. Compose otherwise derives the project name from
+# the containing directory, which is `infra` in every project of this portfolio,
+# so two stacks would share one project name and evict each other's containers
+# and volumes.
+name: lms
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lms
+      POSTGRES_PASSWORD: lms
+      POSTGRES_DB: lms
+    ports:
+      - '5435:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lms -d lms']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lms-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6382:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: lms-mailhog
+    restart: unless-stopped
+    ports:
+      - '1028:1025' # SMTP
+      - '8028:8025' # web UI at http://localhost:8028
+
+  # The application services are opt-in: `docker compose --profile app up -d`.
+  # Day-to-day development runs them with `pnpm dev` for hot reload, and only
+  # needs the datastores above. The profile exists so the whole stack can be
+  # brought up exactly as it ships.
+  api:
+    profiles: ['app']
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    container_name: lms-api
+    restart: unless-stopped
+    # Secrets come from the repo-root .env, which Compose does not read on its
+    # own (it looks beside the compose file). Listing it here keeps the values
+    # out of this file and out of git.
+    env_file: ../.env
+    environment:
+      # Container-network overrides. These win over the .env values above,
+      # because inside the compose network the hosts are service names.
+      DATABASE_URL: postgresql://lms:lms@postgres:5432/lms?schema=public
+      DIRECT_DATABASE_URL: postgresql://lms:lms@postgres:5432/lms?schema=public
+      REDIS_URL: redis://redis:6379
+      MEDIA_ROOT: /data/media
+      APP_BASE_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:4000
+      SMTP_HOST: mailhog
+      SMTP_PORT: '1025'
+      PORT: '4000'
+    ports:
+      - '4000:4000'
+    volumes:
+      # Shared with the worker: the API writes uploads here and the worker reads
+      # them back. A named volume rather than a bind mount so the two containers
+      # genuinely see one filesystem.
+      - media:/data/media
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://localhost:4000/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  worker:
+    profiles: ['app']
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.worker
+    container_name: lms-worker
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgresql://lms:lms@postgres:5432/lms?schema=public
+      DIRECT_DATABASE_URL: postgresql://lms:lms@postgres:5432/lms?schema=public
+      MEDIA_ROOT: /data/media
+    volumes:
+      - media:/data/media
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  web:
+    profiles: ['app']
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+      args:
+        # Inlined into the browser bundle at build time, so it is an ARG rather
+        # than a runtime variable.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    container_name: lms-web
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      API_BASE_URL: http://api:4000
+      APP_BASE_URL: http://localhost:3000
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+    ports:
+      - '3000:3000'
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  redisdata:
+  media:

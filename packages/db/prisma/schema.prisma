@@ -1,0 +1,333 @@
+// Conventions: snake_case in the database via @map/@@map, cuid ids, every
+// instant is timestamptz. Durations are seconds (Float, because ffprobe reports
+// fractional seconds and rounding them would drift the completion threshold).
+
+generator client {
+  provider = "prisma-client-js"
+  // Generated into the package rather than into node_modules/.prisma.
+  //
+  // The default location lives inside pnpm's content-addressed store, which
+  // means a production install in a Docker image (or `pnpm deploy --prod`)
+  // rebuilds node_modules and silently drops the generated client. Emitting it
+  // here makes it an ordinary file in the package that gets copied like any
+  // other build output.
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migrations cannot run through a transaction-mode pooler — they need a
+  // session, and they issue statements a pooler will not carry. Prisma requires
+  // this to be set with no fallback, so locally and in CI it is simply the same
+  // value as DATABASE_URL: there is no pooler in front of a Postgres container.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonKind {
+  VIDEO
+  QUIZ
+}
+
+enum VideoStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  REVOKED
+  COMPLETED
+}
+
+enum QuestionKind {
+  SINGLE
+  MULTI
+  TRUE_FALSE
+  SHORT_TEXT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String   @map("password_hash")
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  courses      Course[]
+  enrollments  Enrollment[]
+  progress     LessonProgress[]
+  quizAttempts QuizAttempt[]
+
+  @@map("users")
+}
+
+model Course {
+  id           String       @id @default(cuid())
+  slug         String       @unique
+  title        String
+  summary      String
+  description  String       @default("")
+  status       CourseStatus @default(DRAFT)
+  instructorId String       @map("instructor_id")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  modules      Module[]
+  enrollments  Enrollment[]
+
+  @@index([status])
+  @@index([instructorId])
+  @@map("courses")
+}
+
+model Module {
+  id       String @id @default(cuid())
+  courseId String @map("course_id")
+  title    String
+  position Int
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  // Ordering is data, not a rendering detail, so it is unique per course rather
+  // than sorted by createdAt and hoped for.
+  @@unique([courseId, position])
+  @@map("modules")
+}
+
+model Lesson {
+  id        String     @id @default(cuid())
+  moduleId  String     @map("module_id")
+  title     String
+  kind      LessonKind @default(VIDEO)
+  position  Int
+  /// Playable without enrolling. The course page uses it as the free preview.
+  isPreview Boolean    @default(false) @map("is_preview")
+  published Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  module     Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  videoAsset VideoAsset?
+  quiz       Quiz?
+  progress   LessonProgress[]
+
+  @@unique([moduleId, position])
+  @@map("lessons")
+}
+
+/// One transcoded video, its HLS ladder, and the key that decrypts it.
+model VideoAsset {
+  id       String      @id @default(cuid())
+  lessonId String      @unique @map("lesson_id")
+  status   VideoStatus @default(PENDING)
+  /// Path of the uploaded source, relative to MEDIA_ROOT.
+  sourcePath      String  @map("source_path")
+  sourceBytes     Int     @default(0) @map("source_bytes")
+  /// Seconds, from ffprobe. Authoritative for every completion calculation.
+  durationSeconds Float   @default(0) @map("duration_seconds")
+  width           Int     @default(0)
+  height          Int     @default(0)
+  /// Directory holding the ladder, relative to MEDIA_ROOT.
+  outputDir       String? @map("output_dir")
+  /// Renditions the ladder actually produced: [{name,height,bitrateKbps}].
+  renditions      Json    @default("[]")
+
+  /// AES-128 content key. Never served from disk and never in a playlist: the
+  /// API hands it out only from /lessons/:id/key, after re-reading enrollment.
+  encryptionKey Bytes? @map("encryption_key")
+  encryptionIv  Bytes? @map("encryption_iv")
+
+  lastError String?  @map("last_error")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  lesson Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  jobs   TranscodeJob[]
+
+  @@index([status])
+  @@map("video_assets")
+}
+
+/// Work item for apps/worker, claimed with SELECT ... FOR UPDATE SKIP LOCKED.
+///
+/// Deliberately a table rather than a Redis queue: the job's state and the
+/// asset row it describes then move in one transaction, so a crash can never
+/// leave a DONE job pointing at an asset still marked PROCESSING.
+model TranscodeJob {
+  id      String    @id @default(cuid())
+  assetId String    @map("asset_id")
+  status  JobStatus @default(QUEUED)
+  /// Attempts already made. Compared against maxAttempts before each retry.
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3) @map("max_attempts")
+  /// Not eligible to be claimed before this instant (exponential backoff).
+  availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  /// Worker id holding the lease, and when it was taken. A lease older than
+  /// JOB_LEASE_SECONDS is reclaimable, so a killed worker strands nothing.
+  lockedBy  String?   @map("locked_by")
+  lockedAt  DateTime? @map("locked_at") @db.Timestamptz(6)
+  lastError String?   @map("last_error")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  asset VideoAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  // The claim query orders by these two.
+  @@index([status, availableAt])
+  @@map("transcode_jobs")
+}
+
+/// Heartbeat row a worker updates while alive. /health reads it, so a stack with
+/// no worker reports degraded instead of quietly never transcoding anything.
+model WorkerHeartbeat {
+  id       String   @id
+  seenAt   DateTime @updatedAt @map("seen_at") @db.Timestamptz(6)
+  jobsDone Int      @default(0) @map("jobs_done")
+
+  @@map("worker_heartbeats")
+}
+
+model Enrollment {
+  id         String           @id @default(cuid())
+  userId     String           @map("user_id")
+  courseId   String           @map("course_id")
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now()) @map("enrolled_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  certificate Certificate?
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id       String @id @default(cuid())
+  userId   String @map("user_id")
+  lessonId String @map("lesson_id")
+  /// Merged, non-overlapping [start,end] pairs. Merging happens server-side in
+  /// @lms/shared; the client never writes here directly.
+  watchedIntervals Json     @default("[]") @map("watched_intervals")
+  secondsWatched   Float    @default(0) @map("seconds_watched")
+  completed        Boolean  @default(false)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  /// When the last heartbeat landed. The next beat's wall-clock budget is
+  /// measured from here, which is what makes fabricated intervals unprofitable.
+  lastBeatAt DateTime? @map("last_beat_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([lessonId, completed])
+  @@map("lesson_progress")
+}
+
+model Quiz {
+  id           String @id @default(cuid())
+  lessonId     String @unique @map("lesson_id")
+  title        String
+  passingScore Int    @default(70) @map("passing_score")
+
+  lesson    Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id       String       @id @default(cuid())
+  quizId   String       @map("quiz_id")
+  kind     QuestionKind
+  prompt   String
+  points   Int          @default(1)
+  position Int
+  /// Free-text answers accepted for SHORT_TEXT, compared after normalisation.
+  /// Server-only: it is never part of the student DTO.
+  acceptedAnswers String[] @default([]) @map("accepted_answers")
+
+  quiz    Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  choices Choice[]
+
+  @@unique([quizId, position])
+  @@map("questions")
+}
+
+model Choice {
+  id         String  @id @default(cuid())
+  questionId String  @map("question_id")
+  label      String
+  /// The answer key. Server-only, same as acceptedAnswers.
+  isCorrect  Boolean @default(false) @map("is_correct")
+  position   Int
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, position])
+  @@map("choices")
+}
+
+model QuizAttempt {
+  id           String   @id @default(cuid())
+  quizId       String   @map("quiz_id")
+  userId       String   @map("user_id")
+  scorePercent Float    @map("score_percent")
+  passed       Boolean
+  /// The submitted answers, kept for the instructor's item analysis.
+  answers   Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, userId])
+  @@map("quiz_attempts")
+}
+
+model Certificate {
+  id           String   @id @default(cuid())
+  /// One per enrollment. This unique is what makes issuing idempotent: a second
+  /// request loses the race and reads back the existing row.
+  enrollmentId String   @unique @map("enrollment_id")
+  /// Public, human-readable, checked at /verify/[serial].
+  serial       String   @unique
+  studentName  String   @map("student_name")
+  courseTitle  String   @map("course_title")
+  issuedAt     DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  /// PDF path relative to MEDIA_ROOT. Regenerated on demand if missing.
+  pdfPath      String?  @map("pdf_path")
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}

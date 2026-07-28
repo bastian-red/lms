@@ -1,0 +1,25 @@
+{
+  "name": "@lms/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@lms/db": "workspace:*",
+    "@lms/media": "workspace:*",
+    "@lms/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@lms/config": "workspace:*",
+    "@types/node": "^20.17.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

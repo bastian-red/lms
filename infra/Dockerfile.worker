@@ -1,0 +1,30 @@
+# Build context is the repo root: docker build -f infra/Dockerfile.worker .
+#
+# A separate image from the API on purpose. The worker is the only thing that
+# needs to be scaled by CPU, and the only thing whose crash must not take the
+# API down with it.
+FROM node:20-slim AS base
+ENV PNPM_HOME="/pnpm" PATH="/pnpm:$PATH" COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+FROM base AS build
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @lms/db generate \
+ && pnpm --filter @lms/shared --filter @lms/db --filter @lms/media build \
+ && pnpm --filter @lms/worker build
+RUN pnpm --filter @lms/worker --prod deploy /prod/worker
+
+FROM base AS runner
+ENV NODE_ENV=production
+# The whole point of this image. The worker checks for it at startup and exits
+# with a clear message rather than failing every job a few seconds in.
+RUN apt-get update -y && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build /prod/worker /app
+WORKDIR /app
+ENV MEDIA_ROOT=/data/media
+CMD ["node", "dist/main.js"]
