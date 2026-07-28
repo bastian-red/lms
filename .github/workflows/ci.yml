@@ -79,11 +79,17 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      # ubuntu-latest ships ffmpeg, and this suite is meaningless without it:
-      # the media proofs would be skipped rather than failed. Asserting the
-      # binary exists means a runner image change breaks CI loudly instead of
-      # quietly deleting the evidence.
-      - name: Assert ffmpeg is present
+      # ubuntu-latest moved to 24.04, which does not ship ffmpeg the way 22.04
+      # did. Installing it explicitly is the only way this stays pinned to
+      # something the workflow controls rather than to the runner image.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
+      # This suite is meaningless without a capable ffmpeg: the media proofs
+      # would be skipped rather than failed. `shell: bash` is load-bearing, it
+      # adds `-o pipefail` — without it `ffmpeg -version | head -1` reports the
+      # exit code of `head`, so a missing binary passes the assertion.
+      - name: Assert ffmpeg can do AES-128 HLS
+        shell: bash
         run: |
           ffmpeg -version | head -1
           ffprobe -version | head -1
@@ -130,7 +136,12 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+      # The seed transcodes the demo videos for real, so this lane needs the
+      # same ffmpeg the integration lane does.
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Assert ffmpeg is present
+        shell: bash
         run: ffmpeg -version | head -1
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
