@@ -5,11 +5,18 @@ import { cachedApiFetch } from '../lib/api';
 /**
  * The catalogue.
  *
- * ISR with a tag: the list changes when an instructor publishes, which is rare,
- * so serving a cached page and revalidating on the tag beats hitting the API on
- * every visit.
+ * Rendered on demand, not statically. `Nav` sits in the root layout and reads
+ * the session with `auth()`, which touches cookies, so every route in the app
+ * is dynamic — `next build` marks even `/_not-found` as `ƒ`. That is a
+ * deliberate trade: a server-read session means the nav paints correct on the
+ * first byte instead of flickering from logged-out to logged-in, and it costs
+ * static generation of the pages below it.
+ *
+ * What still holds is the *data* cache. `cachedApiFetch` tags this fetch, so
+ * the API response is reused for 60s across visitors and publishing a course
+ * invalidates exactly it via `revalidateTag('courses')`. The page re-renders
+ * per request; it does not re-query the API per request.
  */
-export const revalidate = 60;
 
 function formatDuration(seconds: number): string {
   if (seconds <= 0) return '—';
