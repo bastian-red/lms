@@ -51,7 +51,16 @@ export function AuthForm({ mode, action }: Props) {
 
       <label>
         Email
-        <input name="email" type="email" required autoComplete="email" data-testid="email" />
+        <input
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          // An address is not a word: the red squiggle is noise and the
+          // autocorrect suggestion is actively wrong.
+          spellCheck={false}
+          data-testid="email"
+        />
       </label>
 
       <label>
@@ -91,7 +100,7 @@ export function AuthForm({ mode, action }: Props) {
         </>
       ) : null}
 
-      <p style={{ marginTop: 20 }}>
+      <p className="mt-6">
         <SubmitButton className="btn btn-primary" pendingLabel="Working…" testId="auth-submit">
           {mode === 'signup' ? 'Create account' : 'Sign in'}
         </SubmitButton>

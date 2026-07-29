@@ -66,7 +66,7 @@ export function RetentionCharts({ lessons }: { lessons: LessonAnalytics[] }) {
               />
               <Tooltip
                 contentStyle={{
-                  background: 'var(--panel)',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border-strong)',
                   borderRadius: 0,
                   fontFamily: 'var(--ff-mono)',
@@ -82,7 +82,7 @@ export function RetentionCharts({ lessons }: { lessons: LessonAnalytics[] }) {
                 dataKey="retention"
                 stroke="var(--text)"
                 strokeWidth={1}
-                fill="var(--panel-2)"
+                fill="var(--surface-2)"
                 isAnimationActive={false}
               />
             </AreaChart>

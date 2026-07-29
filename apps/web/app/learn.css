@@ -1,0 +1,395 @@
+/*
+ * Learn — the student surfaces: catalogue, course, player, quiz, certificate.
+ *
+ * Everything here follows from one observation: a student is reading, for a
+ * sustained stretch, and is trying to finish something. That gives three
+ * requirements the Console language actively works against.
+ *
+ * 1. Legibility over density. Larger body text, a bounded measure, sentence
+ *    case, and tracking left alone. Uppercase costs roughly a tenth of reading
+ *    speed because it destroys word shape; on a quiz answer, where the whole
+ *    task is comparing options, that is not a stylistic choice.
+ *
+ * 2. State you can see. Monochrome cannot say "you got this right". The state
+ *    tokens carry it, always with a glyph as well as a colour so the meaning
+ *    survives greyscale, colour blindness and a bad monitor.
+ *
+ * 3. Momentum. Progress is the reason anyone comes back to a course, and it
+ *    used to be a 1px hairline and 11px grey text — the faintest thing on the
+ *    page. Here it is a primary element.
+ *
+ * Warm neutrals rather than OLED black: pure #fff on pure #000 haloes for
+ * readers with astigmatism, and this is the surface people stare at longest.
+ */
+
+[data-surface='learn'] {
+  --radius: 4px;
+
+  /* Warm dark. Same structure as Console's palette, shifted off neutral. */
+  --bg: #14120f;
+  --surface: #1c1916;
+  --surface-2: #24201c;
+  --border: #35302a;
+  --border-strong: #6b6259;
+  --text: #f7f3ec;
+  --muted: #b0a89d;
+
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+@media (prefers-color-scheme: light) {
+  [data-surface='learn'] {
+    --bg: #faf7f2;
+    --surface: #ffffff;
+    --surface-2: #f1ece3;
+    --border: #e2dbd0;
+    --border-strong: #8b8377;
+    --text: #191714;
+    --muted: #605850;
+  }
+}
+
+/* Body copy is 17px here against Console's 15px. */
+[data-surface='learn'] {
+  font-size: var(--t-md);
+}
+[data-surface='learn'] p,
+[data-surface='learn'] li {
+  max-width: var(--measure);
+}
+
+/* Sentence case: these are things a person reads, not column headers. */
+[data-surface='learn'] h1,
+[data-surface='learn'] h2,
+[data-surface='learn'] h3 {
+  text-transform: none;
+}
+
+/* ==========================================================================
+   Catalogue
+   ========================================================================== */
+
+/* Real gaps, not hairline seams. A single course used to leave the rest of the
+   ruled grid rendering as one large empty filled panel. */
+[data-surface='learn'] .courses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--s-4);
+  margin-top: var(--s-6);
+}
+[data-surface='learn'] .course-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-height: 190px;
+  transition:
+    border-color var(--motion-base) var(--ease),
+    transform var(--motion-base) var(--ease);
+}
+[data-surface='learn'] .course-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+}
+[data-surface='learn'] .course-card h3 {
+  margin: 0;
+  font-size: var(--t-lg);
+  line-height: var(--lh-snug);
+}
+[data-surface='learn'] .course-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--t-base);
+  flex: 1;
+}
+[data-surface='learn'] .course-meta {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  padding-top: var(--s-3);
+}
+[data-surface='learn'] .course-meta strong {
+  font-family: var(--ff-dot);
+  font-size: var(--t-base);
+  color: var(--text);
+  font-weight: 400;
+}
+
+/* ==========================================================================
+   Progress — promoted from a hairline to the thing you actually see
+   ========================================================================== */
+
+[data-surface='learn'] .course-progress {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s-4) var(--s-5);
+  margin: var(--s-5) 0;
+}
+[data-surface='learn'] .meter {
+  height: 14px;
+  border-radius: 999px;
+}
+[data-surface='learn'] .meter > span {
+  background: var(--state-pass);
+  border-radius: 999px;
+}
+[data-surface='learn'] .progress-line {
+  font-size: var(--t-sm);
+}
+[data-surface='learn'] .progress-line b {
+  font-size: var(--t-xl);
+}
+/* The count in words, under the bar. "3 of 5 lessons" is legible to a screen
+   reader and to a person in a way that a bar alone never is. */
+[data-surface='learn'] .progress-detail {
+  margin-top: var(--s-2);
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   Syllabus
+   ========================================================================== */
+
+[data-surface='learn'] .syllabus {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: var(--s-6);
+  overflow: hidden;
+}
+[data-surface='learn'] .syllabus-module {
+  border-bottom: 1px solid var(--border);
+}
+[data-surface='learn'] .syllabus-module:last-child {
+  border-bottom: none;
+}
+[data-surface='learn'] .syllabus-module > header {
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface-2);
+  font-family: var(--ff-mono);
+  font-size: var(--t-sm);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+[data-surface='learn'] .lesson-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--t-base);
+}
+[data-surface='learn'] .lesson-row:first-of-type {
+  border-top: none;
+}
+[data-surface='learn'] .lesson-row a {
+  flex: 1;
+}
+[data-surface='learn'] .lesson-row:hover {
+  background: var(--surface-2);
+}
+[data-surface='learn'] .lesson-row.current {
+  background: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Lesson state: a glyph, a colour and a screen-reader word. Three channels,
+   because the empty 10px square it replaces carried none of them legibly. */
+[data-surface='learn'] .lesson-state {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--t-sm);
+  line-height: 1;
+  color: var(--muted);
+}
+[data-surface='learn'] .lesson-state.done {
+  background: var(--state-pass);
+  border-color: var(--state-pass);
+  color: var(--bg);
+}
+[data-surface='learn'] .lesson-state.done::before {
+  content: '✓';
+  font-weight: 700;
+}
+[data-surface='learn'] .lesson-state.locked {
+  border-style: dashed;
+}
+[data-surface='learn'] .lesson-state.locked::before {
+  content: '·';
+}
+[data-surface='learn'] .lesson-time {
+  font-family: var(--ff-dot);
+  font-size: var(--t-base);
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   Quiz — the screen the old language hurt most
+   ========================================================================== */
+
+[data-surface='learn'] .quiz {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--s-6);
+}
+[data-surface='learn'] .question {
+  border-top: 1px solid var(--border);
+  padding: var(--s-5) 0;
+}
+[data-surface='learn'] .question:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+[data-surface='learn'] .question > p {
+  margin: 0 0 var(--s-4);
+  font-size: var(--t-md);
+  font-weight: 500;
+}
+[data-surface='learn'] .question .points {
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: var(--s-2);
+  font-weight: 400;
+}
+
+/* `.choice` is a <label>, so without this it inherits the global label rule and
+   renders answers in uppercase dim mono — the single worst place in the product
+   for that. Reset all four properties explicitly. */
+[data-surface='learn'] .choice {
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin: 0 0 var(--s-2);
+  cursor: pointer;
+  font-family: var(--ff-display);
+  font-size: var(--t-base);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  min-height: 44px;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+[data-surface='learn'] .choice:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+[data-surface='learn'] .choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+/* Graded states: a coloured rule, a tinted edge, and a word rendered in the
+   markup. Never the colour on its own. */
+[data-surface='learn'] .question.correct,
+[data-surface='learn'] .question.incorrect {
+  padding-left: var(--s-4);
+}
+[data-surface='learn'] .question.correct {
+  border-left: 3px solid var(--state-pass);
+}
+[data-surface='learn'] .question.incorrect {
+  border-left: 3px solid var(--state-fail);
+}
+[data-surface='learn'] .verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--track-wide);
+  font-weight: 700;
+  margin-left: var(--s-2);
+}
+[data-surface='learn'] .question.correct .verdict {
+  color: var(--state-pass);
+}
+[data-surface='learn'] .question.incorrect .verdict {
+  color: var(--state-fail);
+}
+[data-surface='learn'] .score {
+  font-family: var(--ff-dot);
+  font-size: 44px;
+  line-height: var(--lh-tight);
+}
+[data-surface='learn'] .score.pass {
+  color: var(--state-pass);
+}
+[data-surface='learn'] .score.fail {
+  color: var(--state-fail);
+}
+
+/* ==========================================================================
+   Certificate
+   ========================================================================== */
+
+[data-surface='learn'] .certificate {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--s-10);
+  background: var(--surface);
+}
+[data-surface='learn'] .certificate .serial {
+  font-family: var(--ff-dot);
+  font-size: var(--t-xl);
+  letter-spacing: var(--track-wide);
+  margin: var(--s-4) 0;
+}
+[data-surface='learn'] .verify-result {
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--state-pass);
+  border-radius: var(--radius);
+  padding: var(--s-5) var(--s-6);
+  background: var(--surface);
+}
+[data-surface='learn'] .verify-result.invalid {
+  border-left-color: var(--state-fail);
+}
+
+/* ==========================================================================
+   Auth
+   ========================================================================== */
+
+[data-surface='learn'] .auth-wrap {
+  max-width: 420px;
+  margin: var(--s-12) auto;
+}
+
+/* The name on a verified certificate is the thing the page exists to show. */
+[data-surface='learn'] .verify-name {
+  font-size: var(--t-lg);
+  margin: var(--s-2) 0;
+  font-weight: 500;
+}

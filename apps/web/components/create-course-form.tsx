@@ -1,7 +1,7 @@
 'use client';
 
 import { useFormState } from 'react-dom';
-import { createCourseAction, type ActionState } from '../app/instructor/actions';
+import { createCourseAction, type ActionState } from '../app/(console)/instructor/actions';
 import { SubmitButton } from './submit-button';
 
 export function CreateCourseForm() {
@@ -30,7 +30,7 @@ export function CreateCourseForm() {
           Description
           <textarea name="description" rows={3} maxLength={5000} />
         </label>
-        <p style={{ marginTop: 16 }}>
+        <p className="mt-4">
           <SubmitButton
             className="btn btn-primary"
             pendingLabel="Creating…"

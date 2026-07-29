@@ -1,52 +1,168 @@
 /*
- * Nothing-style design system.
- * Monochrome (OLED black / pure white / precise grays), one red signal accent,
- * flat surfaces with hard 1px borders, sharp corners, and uppercase mono
- * metadata. Space Grotesk (display/body), Space Mono (labels/data), Doto
- * (dot-matrix brand + numeric accents) are wired in app/layout.tsx.
+ * Design system: primitives, and every component written against semantic
+ * tokens.
+ *
+ * The product has two audiences with opposite needs. A student reads for a
+ * sustained stretch and needs legibility, warmth and visible momentum. An
+ * instructor scans dense state and needs precision and density. One visual
+ * language cannot serve both, so there are two scopes:
+ *
+ *   [data-surface="learn"]    -> learn.css
+ *   [data-surface="console"]  -> console.css
+ *
+ * They share this file: the same spacing rhythm, type scale, motion, focus
+ * treatment and accessibility contract, so the product reads as one thing. What
+ * differs is warmth, density and case, which is exactly what differs between
+ * reading and scanning.
+ *
+ * Rules for editing:
+ *   - never hardcode a colour, size or duration in a component rule; every one
+ *     of them exists as a token below;
+ *   - every colour pair is checked by lib/contrast.test.ts, which parses this
+ *     file. Change a value and the test tells you whether it still passes AA;
+ *   - state is never carried by colour alone. Every state token is paired with
+ *     a glyph and a text label so it survives greyscale and colour blindness.
+ *
+ * Fonts (Space Grotesk / Space Mono / Doto) are wired in app/layout.tsx.
  */
 
+/* ==========================================================================
+   Primitives — identical in both scopes and both colour schemes
+   ========================================================================== */
+
 :root {
-  --bg: #000000;
-  --panel: #0a0a0a;
-  --panel-2: #141414;
-  --border: #2a2a2a;
-  --border-strong: #3d3d3d;
-  --text: #ffffff;
-  --muted: #8a8a8a;
-  --accent: #ff0000; /* Nothing red — used only as a signal */
-  --ok: #ffffff;
-  --warn: #8a8a8a;
-  --err: #ff0000;
+  /* Spacing, 4px base. Used for every padding, margin and gap. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Type scale. --t-body is scoped: Learn sets it larger than Console. */
+  --t-2xs: 10px;
+  --t-xs: 11px;
+  --t-sm: 13px;
+  --t-base: 15px;
+  --t-md: 17px;
+  --t-lg: 20px;
+  --t-xl: 26px;
+  --t-2xl: 34px;
+  --t-display: clamp(34px, 5.5vw, 52px);
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-base: 1.6;
+
+  /* Tracking. Wide tracking is for uppercase mono metadata only — it hurts
+     lowercase prose, which is why Learn uses it far less. */
+  --track-tight: -0.01em;
+  --track-wide: 0.08em;
+  --track-wider: 0.12em;
+
+  /* Motion. Honoured by prefers-reduced-motion at the bottom of this file. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 300ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Focus. One ring everywhere: a keyboard user should never have to relearn
+     what focus looks like when they cross from a course into the console. */
+  --focus-w: 2px;
+  --focus-offset: 2px;
+
+  /* Measure. Prose wider than this is measurably harder to track back from the
+     end of one line to the start of the next. */
+  --measure: 68ch;
+
+  /* Corner radius. Scoped: Console keeps the brand's hard 0, Learn softens it
+     slightly. Declared here so a component rule never has to know which scope
+     it is rendering inside. */
   --radius: 0px;
 
-  /* Consume the next/font variables (--font-*) into named stacks with fallbacks.
-     Different names avoid a self-referential (and thus invalid) declaration. */
+  /* Consume the next/font variables (--font-*) into named stacks with
+     fallbacks. Different names avoid a self-referential (invalid) declaration. */
   --ff-display: var(--font-display), -apple-system, system-ui, sans-serif;
   --ff-mono: var(--font-mono), 'SF Mono', ui-monospace, monospace;
   --ff-dot: var(--font-dot), var(--font-mono), 'SF Mono', monospace;
 
-  /* Faint dot-matrix texture behind the whole page. */
+  /* ---- Semantic defaults (Console palette; Learn overrides in learn.css) ----
+     Dark is the default and light is the override, matching the brand's origin.
+     Every value here is contrast-checked. */
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #141414;
+  --border: #2a2a2a;
+  /* Control boundaries, not decoration: held at >=3:1 against --bg for
+     WCAG 1.4.11, which the previous #3d3d3d (1.88:1) failed. */
+  --border-strong: #606060;
+  --text: #ffffff;
+  --muted: #9a9a9a;
+  /* The brand red, for fills, rules, dots and the focus ring — all non-text,
+     which WCAG holds to 3:1. */
+  --accent: #ff0000;
+  /* The same signal, as *text*. #ff0000 on white is 4.0:1 and fails AA at body
+     size, so accent-coloured words get their own token rather than quietly
+     shipping unreadable copy in the brand colour. */
+  --accent-ink: #ff4d4d;
+
+  /* State. The thing a monochrome system structurally cannot express: a quiz
+     that marks an answer with a white line says nothing a black line does not. */
+  /* Pass and fail are deliberately far apart in *luminance*, not only in hue.
+     Red and green at the same tone are the classic deuteranopia collision: they
+     collapse to the same grey, so a colour-blind reader sees one colour on both
+     answers. The glyph and the word carry the meaning; this gap means the
+     colour is not actively lying to them either. */
+  --state-pass: #6ee7a8;
+  --state-fail: #f26a6a;
+  --state-warn: #f0b429;
+  --state-info: #6cb2f5;
+  --state-idle: #9a9a9a;
+
   --dot-grid: radial-gradient(var(--border) 1px, transparent 1px);
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #ffffff;
-    --panel: #ffffff;
-    --panel-2: #f5f5f5;
-    --border: #e5e5e5;
-    --border-strong: #d4d4d4;
+    /* Was #ffffff, identical to --bg, so every .card and .certificate lost its
+       surface and read as a bare outline. */
+    --surface: #fbfbfb;
+    --surface-2: #f2f2f2;
+    --border: #e0e0e0;
+    --border-strong: #8f8f8f;
     --text: #000000;
-    --muted: #737373;
-    --ok: #000000;
-    --warn: #737373;
-    --dot-grid: radial-gradient(#e5e5e5 1px, transparent 1px);
+    /* Was #737373: 4.07:1 on --surface-2, which failed AA and was 22 of the 56
+       axe violations in the baseline. */
+    --muted: #5f5f5f;
+    --accent-ink: #c00000;
+
+    --state-pass: #04502c;
+    --state-fail: #c9303a;
+    --state-warn: #8a5a00;
+    --state-info: #1554a8;
+    --state-idle: #5f5f5f;
+
+    --dot-grid: radial-gradient(#e0e0e0 1px, transparent 1px);
   }
 }
 
+/* ==========================================================================
+   Reset and document
+   ========================================================================== */
+
 * {
   box-sizing: border-box;
+}
+
+html {
+  /* Tells the browser to render scrollbars, form controls and the canvas in the
+     matching scheme. Without it a dark page still gets light native widgets. */
+  color-scheme: dark light;
 }
 
 html,
@@ -54,61 +170,99 @@ body {
   margin: 0;
   padding: 0;
   background-color: var(--bg);
-  background-image: var(--dot-grid);
-  background-size: 22px 22px;
   color: var(--text);
   font-family: var(--ff-display);
-  line-height: 1.5;
+  line-height: var(--lh-base);
   -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: var(--text);
-  text-decoration: none;
-  border-bottom: 1px solid var(--accent);
-  transition: opacity 0.15s ease;
-}
-a:hover {
-  opacity: 0.6;
+/* One focus treatment for the whole product. :focus-visible so a mouse click
+   does not paint a ring, but every keyboard path does. */
+:focus-visible {
+  outline: var(--focus-w) solid var(--accent);
+  outline-offset: var(--focus-offset);
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--ff-display);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
+/* Underlined by default. Links here are the same colour as body text, so the
+   underline is the only thing distinguishing them — dropping it fails WCAG
+   1.4.1 (use of colour) and axe's link-in-text-block. Structural links that are
+   already unambiguous from their context opt out below. */
+a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: opacity var(--motion-base) var(--ease);
+}
+/* Not prose: a nav item, a button, a card heading and a row link are each the
+   only interactive thing in their block, so the underline is noise. */
+.nav a,
+.btn,
+.skip-link,
+.course-card h3 a,
+.lesson-row a,
+.badge,
+.eyebrow {
+  text-decoration: none;
+}
+a:hover {
+  opacity: 0.65;
+}
+
+/* Skip link: the player page puts a syllabus rail and a nav ahead of the
+   content, which is a long tab journey on every lesson without this. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: var(--s-3) var(--s-4);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  font-family: var(--ff-mono);
+  font-size: var(--t-sm);
+}
+.skip-link:focus {
+  left: var(--s-4);
+  top: var(--s-2);
 }
 
 .container {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: var(--s-6) var(--s-5) var(--s-16);
+}
+.container-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-5) var(--s-16);
 }
 
-/* ---- Nav ---- */
+/* ==========================================================================
+   Nav
+   ========================================================================== */
+
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-strong);
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--border);
   background: var(--bg);
+  flex-wrap: wrap;
 }
 .nav .brand {
   font-family: var(--ff-dot);
   font-weight: 700;
-  font-size: 22px;
-  letter-spacing: 0.12em;
+  font-size: var(--t-xl);
+  letter-spacing: var(--track-wider);
   text-transform: uppercase;
   color: var(--text);
-  border: none;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s-2);
 }
-/* The Nothing red dot. */
 .nav .brand::before {
   content: '';
   width: 9px;
@@ -119,132 +273,221 @@ h3 {
 }
 .nav .links {
   display: flex;
-  gap: 20px;
+  gap: var(--s-5);
   align-items: center;
   font-family: var(--ff-mono);
-  font-size: 12px;
+  font-size: var(--t-sm);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.nav .links a {
-  border-bottom: none;
+  letter-spacing: var(--track-wide);
+  flex-wrap: wrap;
 }
 .nav .links a:hover {
-  color: var(--accent);
+  color: var(--accent-ink);
   opacity: 1;
 }
 
-/* ---- Hero ---- */
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+h1,
+h2,
+h3 {
+  font-family: var(--ff-display);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
+  line-height: var(--lh-tight);
+  /* Stops a one-word last line on a wrapped course title. */
+  text-wrap: balance;
+}
+
 .hero {
-  padding: 64px 0 32px;
+  padding: var(--s-16) 0 var(--s-8);
   border-bottom: 1px solid var(--border);
-  margin-bottom: 32px;
+  margin-bottom: var(--s-8);
 }
 .hero h1 {
-  font-size: clamp(36px, 6vw, 56px);
-  line-height: 1.02;
-  margin: 0 0 20px;
-  color: var(--text);
+  font-size: var(--t-display);
+  margin: 0 0 var(--s-5);
 }
 .hero p {
   color: var(--muted);
-  font-size: 16px;
-  max-width: 620px;
+  font-size: var(--t-md);
+  max-width: var(--measure);
+  margin: 0;
 }
-/* Dot-matrix eyebrow marker above headings. */
-.hero::before {
-  content: '// SHOP';
+/* The eyebrow is content, not decoration, so it comes from the markup. It used
+   to be `content: '// SHOP'` — an e-commerce leftover that rendered literally
+   above "Learn it properly" on the catalogue. */
+.eyebrow {
   display: block;
   font-family: var(--ff-mono);
-  font-size: 12px;
+  font-size: var(--t-sm);
   letter-spacing: 0.18em;
-  color: var(--accent);
-  margin-bottom: 20px;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin-bottom: var(--s-5);
 }
 
-/* ---- Cards & grid ---- */
+.prose {
+  max-width: var(--measure);
+}
+.muted {
+  color: var(--muted);
+}
+.mono {
+  font-family: var(--ff-mono);
+}
+.num {
+  font-family: var(--ff-mono);
+  text-align: right;
+  /* Equal-width digits, so counts in a column line up on the units place and
+     can be compared down the table rather than read one at a time. */
+  font-variant-numeric: tabular-nums;
+}
+/* The same, for the dot-matrix numerals used as display figures. */
+.stat .value,
+.progress-line b,
+.score,
+.lesson-time {
+  font-variant-numeric: tabular-nums;
+}
+.stack > * + * {
+  margin-top: var(--s-2);
+}
+.row {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Visually hidden but still announced. Used for the labels that give the file
+   input and the role select an accessible name. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   Surfaces
+   ========================================================================== */
+
 .card {
-  background: var(--panel);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
-  margin-bottom: 16px;
+  padding: var(--s-6);
+  margin-bottom: var(--s-4);
 }
 .card h3 {
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  margin: 0 0 10px;
-}
-.grid {
-  display: grid;
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-/* Cards inside a grid share hairline seams instead of gaps. */
-.grid .card {
-  margin: 0;
-  border: none;
+  font-size: var(--t-base);
+  margin: 0 0 var(--s-3);
 }
 
-/* ---- Forms ---- */
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
 label {
   display: block;
   font-family: var(--ff-mono);
-  font-size: 11px;
+  font-size: var(--t-xs);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--track-wide);
   color: var(--muted);
-  margin: 16px 0 8px;
+  margin: var(--s-4) 0 var(--s-2);
 }
+
 input,
 select,
 textarea {
   width: 100%;
-  padding: 12px 14px;
+  padding: var(--s-3) var(--s-4);
   border-radius: var(--radius);
   border: 1px solid var(--border-strong);
-  background: var(--panel-2);
+  background: var(--surface-2);
   color: var(--text);
   font-family: var(--ff-display);
-  font-size: 14px;
+  font-size: var(--t-base);
 }
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
+/* Checkboxes and radios are not text fields and must not inherit the text-field
+   rule. `width: 100%` on them stretched the control across the whole row and
+   pushed its label to the far right — the quiz was visibly broken by it. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+input[type='file'] {
+  padding: var(--s-2);
+  font-family: var(--ff-mono);
+  font-size: var(--t-sm);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
 }
 
-/* ---- Buttons ---- */
+.error {
+  color: var(--state-fail);
+  font-family: var(--ff-mono);
+  font-size: var(--t-sm);
+  margin-top: var(--s-2);
+}
+
+/* Honeypot: out of the layout and out of assistive tech, still in the DOM. */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
 .btn {
+  /* Removes the 300ms double-tap-zoom delay on touch. */
+  touch-action: manipulation;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px 20px;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-5);
   border-radius: var(--radius);
   border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--text);
   font-family: var(--ff-mono);
-  font-size: 12px;
+  font-size: var(--t-sm);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   cursor: pointer;
+  /* 44px minimum target. Below this, precision-limited users miss. */
+  min-height: 44px;
   transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
+    background var(--motion-base) var(--ease),
+    color var(--motion-base) var(--ease),
+    border-color var(--motion-base) var(--ease);
 }
 .btn:hover {
   border-color: var(--text);
-  text-decoration: none;
 }
-/* Primary is the Nothing white block: white fill, black label. */
 .btn-primary {
   background: var(--text);
   border-color: var(--text);
@@ -256,44 +499,27 @@ textarea:focus {
   color: #ffffff;
 }
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* ---- Layout helpers ---- */
-.row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.between {
-  justify-content: space-between;
-}
-.muted {
-  color: var(--muted);
-}
-.error {
-  color: var(--err);
-  font-family: var(--ff-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  margin-top: 10px;
-}
+/* ==========================================================================
+   Badges — colour plus a glyph, never colour alone
+   ========================================================================== */
 
-/* ---- Badges ---- */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border: 1px solid var(--border-strong);
+  gap: var(--s-1);
+  padding: var(--s-1) var(--s-3);
+  border: 1px solid currentColor;
   border-radius: var(--radius);
   font-family: var(--ff-mono);
-  font-size: 11px;
+  font-size: var(--t-xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   font-weight: 700;
+  color: var(--state-idle);
 }
 .badge::before {
   content: '';
@@ -301,224 +527,155 @@ textarea:focus {
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-}
-.badge-ok {
-  color: var(--ok);
-}
-.badge-warn {
-  color: var(--warn);
-}
-.badge-err {
-  color: var(--err);
-  border-color: var(--err);
+  flex: none;
 }
 
-/* ---- Tables ---- */
+/* Status families, keyed off the Prisma enums via badge-${status.toLowerCase()}.
+   Keep in sync with the schema: a missing class degrades to --state-idle rather
+   than breaking, which is why the default above is a real colour. */
+.badge-ready,
+.badge-completed,
+.badge-active,
+.badge-published {
+  color: var(--state-pass);
+}
+.badge-pending,
+.badge-queued,
+.badge-processing,
+.badge-running,
+.badge-draft {
+  color: var(--state-idle);
+}
+.badge-failed,
+.badge-revoked,
+.badge-archived {
+  color: var(--state-fail);
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+.table-wrap {
+  overflow-x: auto;
+}
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--t-base);
 }
 th,
 td {
   text-align: left;
-  padding: 12px 10px;
+  padding: var(--s-3) var(--s-2);
   border-bottom: 1px solid var(--border);
 }
 th {
   font-family: var(--ff-mono);
-  font-size: 11px;
+  font-size: var(--t-xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-wide);
   color: var(--muted);
   font-weight: 700;
 }
 
-/* ---- Auth ---- */
-.auth-wrap {
-  max-width: 400px;
-  margin: 56px auto;
+/* ==========================================================================
+   Progress
+   ========================================================================== */
+
+.meter {
+  height: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
-.center {
-  text-align: center;
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+  transition: width var(--motion-slow) var(--ease);
 }
-.stack > * + * {
-  margin-top: 8px;
+.progress-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--s-2);
+}
+.progress-line b {
+  font-family: var(--ff-dot);
+  font-size: var(--t-lg);
+  color: var(--text);
+  font-weight: 400;
 }
 
-/* ---- Password strength meter ---- */
+/* ==========================================================================
+   Notices, empty states
+   ========================================================================== */
+
+.notice {
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--accent);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-base);
+  margin-bottom: var(--s-4);
+}
+.notice-ok {
+  border-left-color: var(--state-pass);
+}
+.empty {
+  border: 1px dashed var(--border-strong);
+  padding: var(--s-12) var(--s-5);
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--ff-mono);
+  font-size: var(--t-sm);
+  letter-spacing: var(--track-wide);
+}
+
+/* ==========================================================================
+   Password strength
+   ========================================================================== */
+
 .strength {
-  margin-top: 10px;
+  margin-top: var(--s-2);
 }
 .strength-bars {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: var(--s-1);
 }
 .strength-seg {
-  height: 4px;
+  height: var(--s-1);
   background: var(--border-strong);
-  transition: background 0.15s ease;
+  transition: background var(--motion-base) var(--ease);
 }
 .strength-seg.on {
   background: var(--accent);
 }
 .strength-label {
   display: block;
-  margin-top: 6px;
+  margin-top: var(--s-2);
   font-family: var(--ff-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--muted);
-}
-.mono {
-  font-family: var(--ff-mono);
-}
-
-/* ---- Honeypot: removed from layout and from assistive tech, still in the DOM ---- */
-.hp {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
-/* ---------------------------------------------------------------------------
- * Learning surfaces.
- * Everything here extends the base system above for a course platform: the
- * player and its rendition readout, syllabus lists, progress meters, the quiz,
- * the instructor's retention charts and the certificate.
- * Same rules apply — flat, 1px borders, sharp corners, red used only as signal.
- * ------------------------------------------------------------------------- */
-
-.container-wide {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px 20px 64px;
-}
-
-/* ---- Course grid ---- */
-.courses {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  margin-top: 24px;
-}
-.course-card {
-  background: var(--bg);
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 190px;
-  transition: background 0.12s ease;
-}
-.course-card:hover {
-  background: var(--panel-2);
-}
-.course-card h3 {
-  margin: 0;
-  font-size: 17px;
-  line-height: 1.25;
-}
-.course-card h3 a {
-  border-bottom: none;
-}
-.course-card p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-  flex: 1;
-}
-.course-meta {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-  font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-}
-.course-meta strong {
-  font-family: var(--ff-dot);
-  font-size: 14px;
-  color: var(--text);
-  font-weight: 400;
-}
-
-/* ---- Syllabus ---- */
-.syllabus {
-  border: 1px solid var(--border);
-  margin-top: 24px;
-}
-.syllabus-module {
-  border-bottom: 1px solid var(--border);
-}
-.syllabus-module:last-child {
-  border-bottom: none;
-}
-.syllabus-module > header {
-  padding: 12px 16px;
-  background: var(--panel-2);
-  font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: flex;
-  justify-content: space-between;
-}
-.lesson-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  font-size: 14px;
-}
-.lesson-row:first-of-type {
-  border-top: none;
-}
-.lesson-row a {
-  border-bottom: none;
-  flex: 1;
-}
-.lesson-row.current {
-  background: var(--panel-2);
-  border-left: 2px solid var(--accent);
-}
-/* The completion marker. A filled square rather than a checkmark glyph: it
-   renders identically in every font and reads at 10px. */
-.lesson-state {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
-  border: 1px solid var(--border-strong);
-}
-.lesson-state.done {
-  background: var(--text);
-  border-color: var(--text);
-}
-.lesson-state.locked {
-  border-style: dashed;
-}
-.lesson-time {
-  font-family: var(--ff-dot);
-  font-size: 13px;
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
   color: var(--muted);
 }
 
-/* ---- Player ---- */
+/* ==========================================================================
+   Player — shared, because a lesson is Learn but the editor previews it too
+   ========================================================================== */
+
 .player-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 24px;
+  gap: var(--s-6);
   align-items: start;
 }
 @media (max-width: 900px) {
@@ -541,35 +698,33 @@ th {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: var(--s-4);
   flex-wrap: wrap;
   border: 1px solid var(--border);
   border-top: none;
-  padding: 10px 14px;
+  padding: var(--s-3) var(--s-4);
   font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
   color: var(--muted);
 }
 .player-bar strong {
   font-family: var(--ff-dot);
-  font-size: 15px;
+  font-size: var(--t-md);
   color: var(--text);
   font-weight: 400;
 }
-/* Which rung the player actually switched to, live. This is the adaptive
-   ladder made visible; without it the whole mechanism is invisible. */
 .rendition-readout {
   display: flex;
-  gap: 6px;
+  gap: var(--s-1);
   align-items: center;
 }
 .rendition-pill {
   border: 1px solid var(--border-strong);
-  padding: 2px 7px;
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  padding: 2px var(--s-2);
+  font-size: var(--t-2xs);
+  letter-spacing: var(--track-wide);
 }
 .rendition-pill.active {
   background: var(--text);
@@ -577,243 +732,69 @@ th {
   border-color: var(--text);
 }
 
-/* ---- Progress ---- */
-.meter {
-  height: 4px;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.meter > span {
-  display: block;
-  height: 100%;
-  background: var(--text);
-  transition: width 0.3s ease;
-}
-.meter.accent > span {
-  background: var(--accent);
-}
-.progress-line {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.progress-line b {
-  font-family: var(--ff-dot);
-  font-size: 14px;
-  color: var(--text);
-  font-weight: 400;
-}
+/* ==========================================================================
+   Transcode status
+   ========================================================================== */
 
-/* ---- Quiz ---- */
-.quiz {
-  border: 1px solid var(--border);
-  padding: 24px;
-}
-.question {
-  border-top: 1px solid var(--border);
-  padding: 20px 0;
-}
-.question:first-of-type {
-  border-top: none;
-  padding-top: 0;
-}
-.question > p {
-  margin: 0 0 12px;
-  font-size: 15px;
-}
-.question .points {
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-left: 8px;
-}
-.choice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  margin-bottom: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: border-color 0.12s ease;
-}
-.choice:hover {
-  border-color: var(--border-strong);
-}
-.choice input {
-  margin: 3px 0 0;
-  accent-color: var(--accent);
-}
-.question.correct {
-  border-left: 2px solid var(--ok);
-  padding-left: 14px;
-}
-.question.incorrect {
-  border-left: 2px solid var(--err);
-  padding-left: 14px;
-}
-.score {
-  font-family: var(--ff-dot);
-  font-size: 44px;
-  line-height: 1;
-}
-
-/* ---- Instructor analytics ---- */
-.stat-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  margin-bottom: 24px;
-}
-.stat {
-  background: var(--bg);
-  padding: 16px 18px;
-}
-.stat .label {
-  font-family: var(--ff-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  display: block;
-  margin-bottom: 6px;
-}
-.stat .value {
-  font-family: var(--ff-dot);
-  font-size: 30px;
-  line-height: 1;
-}
-.chart-frame {
-  border: 1px solid var(--border);
-  padding: 16px 8px 8px 0;
-  margin-bottom: 20px;
-}
-.chart-caption {
-  font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding: 0 0 10px 16px;
-}
-
-/* ---- Transcode status ---- */
 .job-line {
   font-family: var(--ff-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: var(--t-xs);
   color: var(--muted);
 }
 .job-error {
-  border: 1px solid var(--err);
+  border: 1px solid var(--state-fail);
   border-left-width: 3px;
-  padding: 10px 14px;
+  padding: var(--s-3) var(--s-4);
   font-family: var(--ff-mono);
-  font-size: 11px;
-  color: var(--err);
-  margin-top: 8px;
+  font-size: var(--t-xs);
+  color: var(--state-fail);
+  margin-top: var(--s-2);
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* ---- Status pills reuse .badge ---- */
-.badge-ready,
-.badge-completed,
-.badge-active,
-.badge-published {
-  color: var(--ok);
+/* ==========================================================================
+   Utilities that replaced one-off inline styles
+   ========================================================================== */
+
+.mt-2 {
+  margin-top: var(--s-2);
 }
-.badge-pending,
-.badge-queued,
-.badge-processing,
-.badge-running,
-.badge-draft {
-  color: var(--muted);
+.mt-4 {
+  margin-top: var(--s-4);
 }
-.badge-failed,
-.badge-revoked,
-.badge-archived {
-  color: var(--err);
-  border-color: var(--err);
+.mt-6 {
+  margin-top: var(--s-6);
+}
+.mb-4 {
+  margin-bottom: var(--s-4);
+}
+.flush-top {
+  border-top: none;
+  padding-top: 0;
+}
+.bare {
+  border: none;
+  padding: 0;
 }
 
-/* ---- Certificate ---- */
-.certificate {
-  border: 1px solid var(--border-strong);
-  padding: 36px;
-  text-align: left;
-  background: var(--panel);
-}
-.certificate .serial {
-  font-family: var(--ff-dot);
-  font-size: 26px;
-  letter-spacing: 0.06em;
-  margin: 14px 0;
-}
-.verify-result {
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--ok);
-  padding: 20px 24px;
-}
-.verify-result.invalid {
-  border-left-color: var(--err);
-}
+/* ==========================================================================
+   Reduced motion
+   ========================================================================== */
 
-/* ---- Admin ---- */
-.admin-nav {
-  display: flex;
-  gap: 20px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
-  font-family: var(--ff-mono);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  flex-wrap: wrap;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
-.admin-nav a {
-  border-bottom: none;
+.grow {
+  flex: 1;
 }
-.admin-nav a:hover {
-  color: var(--accent);
-}
-.num {
-  font-family: var(--ff-mono);
-  text-align: right;
-}
-
-/* ---- Notices ---- */
-.notice {
-  border: 1px solid var(--border-strong);
-  border-left: 3px solid var(--accent);
-  padding: 12px 16px;
-  font-family: var(--ff-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  margin-bottom: 16px;
-}
-.notice-ok {
-  border-left-color: var(--ok);
-}
-.empty {
-  border: 1px dashed var(--border-strong);
-  padding: 48px 20px;
-  text-align: center;
-  color: var(--muted);
-  font-family: var(--ff-mono);
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.section-head {
+  margin-top: var(--s-10);
 }

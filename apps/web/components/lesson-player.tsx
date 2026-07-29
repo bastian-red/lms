@@ -205,7 +205,7 @@ export function LessonPlayer({ lesson, token, onProgress, apiBaseUrl }: Props) {
           {Math.floor(lesson.durationSeconds)}s
         </span>
       </div>
-      <div style={{ marginTop: 12 }}>
+      <div className="mt-4">
         <div className="progress-line">
           <span>Coverage</span>
           <b data-testid="coverage-percent">{percent.toFixed(0)}%</b>

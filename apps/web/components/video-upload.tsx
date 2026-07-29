@@ -18,10 +18,14 @@ export function VideoUpload({
   lessonId,
   apiBaseUrl,
   token,
+  lessonTitle,
 }: {
   lessonId: string;
   apiBaseUrl: string;
   token: string;
+  /** Which lesson this uploads to. The editor lists several at once, so
+      "Choose file" alone does not say which one a screen reader is on. */
+  lessonTitle: string;
 }) {
   const router = useRouter();
   const [percent, setPercent] = useState<number | null>(null);
@@ -66,8 +70,12 @@ export function VideoUpload({
   };
 
   return (
-    <div style={{ marginTop: 8 }}>
+    <div className="mt-2">
+      <label className="sr-only" htmlFor={`upload-input-${lessonId}`}>
+        Upload video for {lessonTitle}
+      </label>
       <input
+        id={`upload-input-${lessonId}`}
         type="file"
         accept="video/mp4,video/quicktime,video/x-matroska,video/webm"
         data-testid={`upload-${lessonId}`}
@@ -78,12 +86,20 @@ export function VideoUpload({
         }}
       />
       {percent !== null ? (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2">
           <div className="progress-line">
-            <span>Uploading</span>
+            <span>Uploading…</span>
             <b>{percent}%</b>
           </div>
-          <div className="meter">
+          {/* role=progressbar so the percentage is announced, not just drawn. */}
+          <div
+            className="meter"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Upload progress for ${lessonTitle}`}
+          >
             <span style={{ width: `${percent}%` }} />
           </div>
         </div>

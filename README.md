@@ -157,9 +157,10 @@ accepts uploads and silently never produces a lesson.
 ## Tests
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test    # gate: 218 unit tests, no DB, no network, <5s
+pnpm lint && pnpm typecheck && pnpm test    # gate: 356 unit tests, no DB, no network, <5s
 ./scripts/integration.sh                    # 43 tests against real Postgres + Redis + ffmpeg
-./scripts/e2e.sh                            # 24 Playwright tests × chromium + firefox
+./scripts/e2e.sh                            # 58 Playwright tests × chromium + firefox
+./scripts/a11y-baseline.sh                  # record an accessibility baseline to /tmp
 ```
 
 The integration lane seeds as part of the run, which means it transcodes real
@@ -181,11 +182,67 @@ ffmpeg -i var/media/assets/$ASSET/720p/seg00000.ts -f null -   # Invalid data fo
 
 ---
 
+## Two design languages, one token layer
+
+The product has two audiences whose needs point in opposite directions. A
+student reads for a sustained stretch and is trying to finish something. An
+instructor scans dense state and is trying to compare rows. Serving both with
+one visual language means serving one of them badly, so `apps/web/app` splits
+into two route groups, each with its own scope:
+
+| | `(learn)` — student | `(console)` — instructor, admin |
+|---|---|---|
+| Palette | warm neutrals, off-black / off-white | monochrome, OLED black, dot-grid |
+| Body | 17px, sentence case, ≤68ch measure | 15px, uppercase mono metadata |
+| Geometry | 4px radius, real gaps | radius 0, 1px hairline seams |
+| State | semantic colour + glyph + word | monochrome; data carries the colour |
+
+Route groups do not appear in the URL, so the split cost nothing in routing.
+They share `globals.css`: one spacing scale, one type scale, one focus ring, one
+motion timing, one accessibility contract — which is what stops it reading as
+two apps bolted together.
+
+**What this fixed.** The old language was inherited from an e-commerce template
+and it was actively hurting the learning surfaces. `.choice` is a `<label>`, so
+quiz answers inherited the global label rule and rendered in dim uppercase mono;
+the global `input { width: 100% }` stretched each radio across its row and shoved
+the answer text to the far right. `--ok` resolved to plain white in dark mode, so
+"you answered correctly" was drawn in the same colour as ordinary chrome. And a
+`content: '// SHOP'` pseudo-element rendered literally above the catalogue
+heading. All four are now regression-tested rather than remembered.
+
+**Colour is never the only channel.** Every state carries a glyph and a word as
+well. Pass and fail are also held apart in *luminance*, not just hue — red and
+green at the same tone collapse to one grey for the most common colour-vision
+deficiency, which on a quiz means both answers look identical.
+
+### Measured, not asserted
+
+"It looks better" is not a result, so three things are numbers:
+
+| Outcome | Before | After | Enforced by |
+|---|---|---|---|
+| axe-core violations, 15 routes × 2 schemes | **56 nodes**, 3 rules | **0** | `e2e/tests/a11y.spec.ts` |
+| Token pairs below WCAG AA | 22 contrast failures from one token | **0** | `apps/web/lib/contrast.test.ts` |
+| `var(--x)` references resolving to nothing | 2 (silent black charts) | **0** | `apps/web/lib/tokens.test.ts` |
+
+The contrast gate parses the real stylesheets rather than a copy of the palette,
+so it cannot pass against values the browser is not using. It was written before
+the new colours were chosen, and the colours were then tuned until it passed —
+contrast is arithmetic, and arithmetic does not belong in anyone's eye.
+
+The token gate exists because of a bug this redesign shipped and then caught:
+renaming `--panel-2` to `--surface-2` left `retention-charts.tsx` passing
+`fill="var(--panel-2)"` into Recharts. An undefined custom property in an SVG
+fill does not warn, does not throw and does not fail a type check — it falls back
+to black. The charts rendered as solid dark slabs and all 116 tests still passed.
+
 ## Architecture
 
 ```
 project003--lms/
 ├── apps/web/                 Next.js 14 App Router — student, instructor, admin
+│   └── app/(learn)|(console) two design scopes, same URLs
 ├── apps/api/                 NestJS — every DB write, all media authorization
 ├── apps/worker/              transcode worker (SKIP LOCKED poller)
 ├── services/media/           ffmpeg ladder, HLS packaging, AES key custody, storage

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import PDFDocument from 'pdfkit';
+import { CERTIFICATE_FONTS, CERTIFICATE_TOKENS } from './tokens';
 
 /**
  * Certificate PDF rendering.
@@ -65,12 +66,12 @@ function draw(doc: PDFKit.PDFDocument, data: CertificateData): void {
 
   // Border, inset from the margin. Two rules rather than a box so the corners
   // stay square at print resolution.
-  doc.lineWidth(1).strokeColor('#111111');
+  doc.lineWidth(1).strokeColor(CERTIFICATE_TOKENS.ink);
   doc.rect(MARGIN / 2, MARGIN / 2, A4_LANDSCAPE[0] - MARGIN, height - MARGIN).stroke();
 
   doc
-    .fillColor('#111111')
-    .font('Helvetica')
+    .fillColor(CERTIFICATE_TOKENS.ink)
+    .font(CERTIFICATE_FONTS.body)
     .fontSize(9)
     .text('CERTIFICATE OF COMPLETION', MARGIN, MARGIN + 10, {
       width,
@@ -82,25 +83,25 @@ function draw(doc: PDFKit.PDFDocument, data: CertificateData): void {
     .lineTo(MARGIN + width, MARGIN + 32)
     .stroke();
 
-  doc.font('Helvetica').fontSize(11).text('This certifies that', MARGIN, MARGIN + 66, { width });
+  doc.font(CERTIFICATE_FONTS.body).fontSize(11).text('This certifies that', MARGIN, MARGIN + 66, { width });
 
   // The name is the only thing on the page set large. Long names wrap rather
   // than overflow the border, which is why the width is bounded and lineBreak
   // stays on.
   doc
-    .font('Helvetica-Bold')
+    .font(CERTIFICATE_FONTS.bold)
     .fontSize(34)
     .text(data.studentName, MARGIN, MARGIN + 88, { width, lineBreak: true });
 
   doc
-    .font('Helvetica')
+    .font(CERTIFICATE_FONTS.body)
     .fontSize(11)
     .text('has completed every lesson and passed every assessment in', MARGIN, MARGIN + 150, {
       width,
     });
 
   doc
-    .font('Helvetica-Bold')
+    .font(CERTIFICATE_FONTS.bold)
     .fontSize(22)
     .text(data.courseTitle, MARGIN, MARGIN + 172, { width, lineBreak: true });
 
@@ -112,16 +113,16 @@ function draw(doc: PDFKit.PDFDocument, data: CertificateData): void {
 
   const columnWidth = width / 3 - 12;
   const label = (text: string, x: number, y: number): void => {
-    doc.font('Helvetica').fontSize(7).fillColor('#666666').text(text, x, y, {
+    doc.font(CERTIFICATE_FONTS.body).fontSize(7).fillColor(CERTIFICATE_TOKENS.inkMuted).text(text, x, y, {
       width: columnWidth,
       characterSpacing: 2,
     });
   };
   const value = (text: string, x: number, y: number): void => {
     doc
-      .font('Helvetica-Bold')
+      .font(CERTIFICATE_FONTS.bold)
       .fontSize(11)
-      .fillColor('#111111')
+      .fillColor(CERTIFICATE_TOKENS.ink)
       .text(text, x, y, { width: columnWidth });
   };
 
@@ -135,9 +136,9 @@ function draw(doc: PDFKit.PDFDocument, data: CertificateData): void {
   value(data.serial, MARGIN + (width / 3) * 2, footerTop + 28);
 
   doc
-    .font('Helvetica')
+    .font(CERTIFICATE_FONTS.body)
     .fontSize(8)
-    .fillColor('#666666')
+    .fillColor(CERTIFICATE_TOKENS.inkMuted)
     .text(`Verify at ${data.verifyUrl}`, MARGIN, footerTop + 62, { width });
 }
 

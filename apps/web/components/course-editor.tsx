@@ -8,7 +8,7 @@ import {
   addModuleAction,
   setCourseStatusAction,
   type ActionState,
-} from '../app/instructor/actions';
+} from '../app/(console)/instructor/actions';
 import { SubmitButton } from './submit-button';
 import { VideoUpload } from './video-upload';
 
@@ -92,9 +92,9 @@ export function CourseEditor({
             </header>
 
             {module.lessons.map((lesson) => (
-              <div key={lesson.id} style={{ borderTop: '1px solid var(--border)', padding: '12px 16px' }}>
-                <div className="lesson-row" style={{ border: 'none', padding: 0 }}>
-                  <span style={{ flex: 1 }}>{lesson.title}</span>
+              <div key={lesson.id} className="editor-lesson">
+                <div className="lesson-row bare">
+                  <span className="grow">{lesson.title}</span>
                   <span className="badge">{lesson.kind}</span>
                   {lesson.isPreview ? <span className="badge">Preview</span> : null}
                   {lesson.videoAsset ? (
@@ -109,7 +109,12 @@ export function CourseEditor({
 
                 {lesson.kind === 'VIDEO' ? (
                   <>
-                    <VideoUpload lessonId={lesson.id} apiBaseUrl={apiBaseUrl} token={token} />
+                    <VideoUpload
+                      lessonId={lesson.id}
+                      lessonTitle={lesson.title}
+                      apiBaseUrl={apiBaseUrl}
+                      token={token}
+                    />
                     {lesson.videoAsset?.status === 'READY' ? (
                       <p className="job-line">
                         {lesson.videoAsset.width}×{lesson.videoAsset.height} ·{' '}
@@ -130,7 +135,7 @@ export function CourseEditor({
               </div>
             ))}
 
-            <form action={addLesson} style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+            <form action={addLesson} className="editor-lesson">
               <input type="hidden" name="courseId" value={course.id} />
               <input type="hidden" name="moduleId" value={module.id} />
               <label>
@@ -144,7 +149,7 @@ export function CourseEditor({
                   <option value="QUIZ">Quiz</option>
                 </select>
               </label>
-              <p style={{ marginTop: 12 }}>
+              <p className="mt-4">
                 <SubmitButton pendingLabel="Adding…" testId={`add-lesson-${module.id}`}>
                   Add lesson
                 </SubmitButton>
@@ -155,13 +160,13 @@ export function CourseEditor({
         ))}
       </div>
 
-      <form action={addModule} className="card" style={{ marginTop: 16 }}>
+      <form action={addModule} className="card mt-4">
         <input type="hidden" name="courseId" value={course.id} />
         <label>
           New module
           <input name="title" required maxLength={160} data-testid="module-title" />
         </label>
-        <p style={{ marginTop: 12 }}>
+        <p className="mt-4">
           <SubmitButton pendingLabel="Adding…" testId="add-module">
             Add module
           </SubmitButton>

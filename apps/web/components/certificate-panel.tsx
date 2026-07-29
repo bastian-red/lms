@@ -26,7 +26,7 @@ export function CertificatePanel({
 
   if (state.serial) {
     return (
-      <div className="certificate" style={{ marginTop: 24 }} data-testid="certificate">
+      <div className="certificate mt-6" data-testid="certificate">
         <span className="mono muted">Certificate of completion</span>
         <div className="serial" data-testid="certificate-serial">
           {state.serial}
@@ -44,13 +44,13 @@ export function CertificatePanel({
   }
 
   return (
-    <form action={action} style={{ marginTop: 24 }}>
+    <form action={action} className="mt-6">
       <input type="hidden" name="courseId" value={courseId} />
       <SubmitButton pendingLabel="Checking…" testId="request-certificate">
         Get certificate
       </SubmitButton>
       {state.error ? (
-        <div className="notice" style={{ marginTop: 12 }} data-testid="certificate-error">
+        <div className="notice mt-4" data-testid="certificate-error">
           {state.error}
           {state.outstanding && state.outstanding.length > 0 ? (
             <ul data-testid="outstanding">

@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CERTIFICATE_FONTS, CERTIFICATE_TOKENS } from './tokens';
 import { formatDate, renderCertificate, type CertificateData } from './render';
 
 const data: CertificateData = {
@@ -47,5 +50,40 @@ describe('renderCertificate', () => {
 describe('formatDate', () => {
   it('is unambiguous across locales', () => {
     expect(formatDate(new Date('2026-03-04T12:00:00Z'))).toBe('2026-03-04');
+  });
+});
+
+describe('design tokens', () => {
+  it('uses the light-scheme values from the web design system', () => {
+    // A certificate is always ink on paper, so it takes the light palette. These
+    // are the same values as --text / --muted / --accent / --state-pass in
+    // apps/web/app/globals.css, and apps/web/lib/contrast.test.ts proves they
+    // clear AA on white. Drifting from them means the PDF and the page a reader
+    // verifies it on stop looking like the same document.
+    expect(CERTIFICATE_TOKENS).toEqual({
+      ink: '#000000',
+      inkMuted: '#5f5f5f',
+      accent: '#ff0000',
+      valid: '#04502c',
+    });
+  });
+
+  it('embeds no fonts, so the file stays portable', () => {
+    // pdfkit built-ins only. Embedding Space Grotesk would roughly double the
+    // file for a document nobody reads on screen at display size.
+    expect(Object.values(CERTIFICATE_FONTS).every((face) => face.startsWith('Helvetica'))).toBe(
+      true,
+    );
+  });
+
+  it('has no colour literals left in the renderer', () => {
+    // Guards the half-done refactor: introducing the tokens but leaving one
+    // `fillColor('#666666')` behind would satisfy the equality check above and
+    // still print the old grey. Asserting on the rendered bytes cannot catch it
+    // — pdfkit deflates its content streams, so no fill command survives as
+    // readable text — so the guard is on the source instead.
+    const source = readFileSync(join(__dirname, 'render.ts'), 'utf8');
+    const literals = source.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+    expect(literals, 'colours belong in ./tokens.ts').toEqual([]);
   });
 });

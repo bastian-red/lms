@@ -1,0 +1,141 @@
+/*
+ * Console — the instructor and admin surfaces.
+ *
+ * This is the Nothing language, kept deliberately rather than by inheritance.
+ * The retention charts and the roster are the two screens in the product where
+ * it was already doing the right thing: monochrome so the data carries the
+ * only colour, hairline seams so rows compare cleanly, mono metadata so columns
+ * align, radius 0 so nothing softens a dense grid.
+ *
+ * It is the wrong language for reading a lesson, which is why Learn exists.
+ * Here, scanning is the job and density is the feature.
+ *
+ * The palette itself lives in globals.css `:root`, because Console is the
+ * default. This file holds what makes Console *Console*: the geometry, the
+ * texture, and the components only it renders.
+ */
+
+[data-surface='console'] {
+  --radius: 0px;
+  --t-body: var(--t-base);
+
+  /* The faint dot-matrix texture. Console only: behind a page of prose it
+     competes with the text, which is the opposite of what Learn needs. */
+  background-image: var(--dot-grid);
+  background-size: 22px 22px;
+  min-height: 100vh;
+}
+
+/* Hairline seams rather than gaps: children sit 1px apart over a border-coloured
+   backdrop, so the grid reads as one ruled table instead of floating cards. */
+[data-surface='console'] .stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: var(--s-6);
+}
+[data-surface='console'] .stat {
+  background: var(--bg);
+  padding: var(--s-4) var(--s-5);
+}
+[data-surface='console'] .stat .label {
+  font-family: var(--ff-mono);
+  font-size: var(--t-2xs);
+  letter-spacing: var(--track-wider);
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: var(--s-2);
+}
+[data-surface='console'] .stat .value {
+  font-family: var(--ff-dot);
+  font-size: var(--t-2xl);
+  line-height: var(--lh-tight);
+}
+
+/* Headings stay uppercase here. On a dashboard they are labels for regions, not
+   sentences to read, and the caps give the eye a stable scanning anchor. */
+[data-surface='console'] h1,
+[data-surface='console'] h2,
+[data-surface='console'] h3 {
+  text-transform: uppercase;
+}
+
+[data-surface='console'] .chart-frame {
+  border: 1px solid var(--border);
+  padding: var(--s-4) var(--s-2) var(--s-2) 0;
+  margin-bottom: var(--s-5);
+}
+[data-surface='console'] .chart-caption {
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0 var(--s-2) var(--s-4);
+}
+
+/* Roster and user tables: numeric columns right-aligned so magnitudes line up. */
+[data-surface='console'] table {
+  font-size: var(--t-sm);
+}
+[data-surface='console'] th,
+[data-surface='console'] td {
+  padding: var(--s-3) var(--s-2);
+}
+
+/* The editor's lesson rows are a control surface, not a reading list. */
+[data-surface='console'] .lesson-row {
+  font-size: var(--t-sm);
+}
+
+/* Editor lesson rows: a ruled list of controls, so they keep the seam. */
+[data-surface='console'] .editor-lesson {
+  border-top: 1px solid var(--border);
+  padding: var(--s-3) var(--s-4);
+}
+[data-surface='console'] .grow {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Syllabus, in the editor
+   ==========================================================================
+   The course editor renders the same syllabus markup the student sees, so the
+   structural rules live in both scopes. Console keeps the hairline treatment:
+   here it is a list of things to operate on, not a list of things to read. */
+
+[data-surface='console'] .syllabus {
+  border: 1px solid var(--border);
+  margin-top: var(--s-6);
+}
+[data-surface='console'] .syllabus-module {
+  border-bottom: 1px solid var(--border);
+}
+[data-surface='console'] .syllabus-module:last-child {
+  border-bottom: none;
+}
+[data-surface='console'] .syllabus-module > header {
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface-2);
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wider);
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+[data-surface='console'] .lesson-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-top: 1px solid var(--border);
+}
+[data-surface='console'] .lesson-row:first-of-type {
+  border-top: none;
+}

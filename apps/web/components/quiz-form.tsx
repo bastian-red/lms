@@ -83,7 +83,7 @@ export function QuizForm({
 
   return (
     <form className="quiz" onSubmit={submit} data-testid="quiz">
-      <h2 style={{ marginTop: 0 }}>{quiz.title}</h2>
+      <h2 className="flush-top">{quiz.title}</h2>
       <p className="mono muted">
         Pass mark {quiz.passingScore}%
         {bestScorePercent !== null ? ` · your best ${bestScorePercent}%` : ''}
@@ -102,6 +102,14 @@ export function QuizForm({
                 {question.points} {question.points === 1 ? 'point' : 'points'}
                 {question.kind === 'MULTI' ? ' · select all that apply' : ''}
               </span>
+              {/* The verdict in words and a glyph, not only as a coloured rule.
+                  Red and green are the most common colour-vision collision
+                  there is, and a border alone tells those readers nothing. */}
+              {result !== null ? (
+                <span className="verdict" data-testid={`verdict-${question.id}`}>
+                  {state ? '✓ Correct' : '✗ Incorrect'}
+                </span>
+              ) : null}
             </p>
 
             {question.kind === 'SHORT_TEXT' ? (
@@ -133,13 +141,13 @@ export function QuizForm({
       {error ? <p className="notice">{error}</p> : null}
 
       {result ? (
-        <div style={{ marginTop: 24 }} data-testid="quiz-result" data-passed={String(result.passed)}>
-          <span className="score">{result.scorePercent}%</span>
+        <div className="mt-6" data-testid="quiz-result" data-passed={String(result.passed)}>
+          <span className={`score ${result.passed ? 'pass' : 'fail'}`}>{result.scorePercent}%</span>
           <p className="mono muted">{result.passed ? 'Passed' : 'Not passed — try again'}</p>
         </div>
       ) : null}
 
-      <p style={{ marginTop: 20 }}>
+      <p className="mt-6">
         <button type="submit" className="btn btn-primary" disabled={pending} data-testid="submit-quiz">
           {pending ? 'Grading…' : result ? 'Try again' : 'Submit'}
         </button>

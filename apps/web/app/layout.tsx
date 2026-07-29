@@ -1,9 +1,10 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import './learn.css';
+import './console.css';
+import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, Space_Mono } from 'next/font/google';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
-import { Nav } from '../components/nav';
 
 // A grotesk for display and body, a mono for metadata, a dot-matrix face for the
 // brand mark and numbers. All three are self-hosted by next/font at build time,
@@ -33,13 +34,37 @@ export const metadata: Metadata = {
     'A learning platform with AES-128 encrypted adaptive streaming and progress that cannot be faked.',
 };
 
+/**
+ * Matches the browser chrome to the page.
+ *
+ * Both values are the Console `--bg`, because that is what the document element
+ * paints; the Learn scope repaints its own subtree. Without this, a mobile
+ * browser draws its address bar in the default colour and the page appears to
+ * float on a differently-coloured strip.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+  ],
+};
+
+/**
+ * The root layout owns only what is genuinely global: the document, the fonts
+ * and the stylesheets.
+ *
+ * The chrome lives one level down, in the two route groups. `(learn)` and
+ * `(console)` each render their own `<Nav>` inside their own `data-surface`
+ * wrapper, so the nav takes the palette of the surface it sits on. Hoisting it
+ * here would paint a warm page with a monochrome bar across the top.
+ *
+ * Route groups do not appear in the URL, so every existing route, link and test
+ * selector is unaffected by the split.
+ */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${grotesk.variable} ${mono.variable} ${doto.variable}`}>
-      <body>
-        <Nav />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

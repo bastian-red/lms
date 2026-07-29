@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { reinstateAction, revokeAction } from '../app/instructor/actions';
+import { reinstateAction, revokeAction } from '../app/(console)/instructor/actions';
 
 /**
  * Revoke or reinstate one student.
