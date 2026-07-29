@@ -33,6 +33,18 @@ test.describe('@demo', () => {
     // 1. The catalogue.
     await page.goto('/');
     await expect(page.getByTestId('course-list')).toBeVisible();
+
+    // The GIF is the first thing anyone sees in the README, so it must show the
+    // seeded course and nothing else. Leftovers from the authoring spec once
+    // reached it — two "E2E course 1785334738378" cards, served from Next's
+    // fetch cache after the seed had already deleted them from the database.
+    // The page was stale, not the data, which is why nothing else caught it.
+    await expect(
+      page.locator('.course-card'),
+      'the demo must show only seeded courses',
+    ).toHaveCount(1);
+    await expect(page.getByText(/E2E course/)).toHaveCount(0);
+
     await shot('catalog');
 
     // 2. Sign in as the student.

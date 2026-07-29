@@ -83,6 +83,23 @@ NODE_ENV=production pnpm build
 echo "==> Seeding (generates and transcodes the demo videos)"
 pnpm --filter @lms/db run seed
 
+# Drop Next's fetch cache, which the seed cannot invalidate.
+#
+# The catalogue reads `/courses` through `cachedApiFetch`, which tags the fetch
+# and caches it for 60s. That cache is written to `.next/cache/fetch-cache` and
+# survives both a rebuild and a restart, so `next start` will happily serve a
+# response captured during the *previous* run. `revalidateTag` is the normal way
+# to clear it, but the seed is a separate process with no route to call it.
+#
+# This is not hypothetical: it put two leftover "E2E course <timestamp>" cards
+# into the README's demo GIF, seeded from a run whose courses the seed had
+# already deleted. The database was correct and the page was stale.
+FETCH_CACHE="$ROOT/apps/web/.next/cache/fetch-cache"
+if [[ -d "$FETCH_CACHE" ]]; then
+  find "$FETCH_CACHE" -type f -delete
+  echo "==> Cleared Next fetch cache"
+fi
+
 echo "==> Starting api, worker, web"
 node apps/api/dist/main.js >/tmp/lms-e2e-api.log 2>&1 &
 API_PID=$!
