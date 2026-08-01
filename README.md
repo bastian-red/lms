@@ -158,6 +158,8 @@ accepts uploads and silently never produces a lesson.
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test    # gate: 356 unit tests, no DB, no network, <5s
+node scripts/env-contract.mjs               # gate: turbo.json vs .env.example vs what the code reads
+./scripts/dev-smoke.sh                      # boots `pnpm dev` and asserts the course page renders
 ./scripts/integration.sh                    # 43 tests against real Postgres + Redis + ffmpeg
 ./scripts/e2e.sh                            # 58 Playwright tests × chromium + firefox
 ./scripts/a11y-baseline.sh                  # record an accessibility baseline to /tmp
@@ -166,6 +168,27 @@ pnpm lint && pnpm typecheck && pnpm test    # gate: 356 unit tests, no DB, no ne
 The integration lane seeds as part of the run, which means it transcodes real
 video with real ffmpeg every time. That is deliberate: the media fixtures the
 tests read are produced by the same code path an instructor's upload takes.
+
+**Environment contract (`scripts/env-contract.mjs`).** Turborepo 2 runs tasks in
+strict environment mode: a task's child process sees only the names declared in
+`turbo.json`, and everything else is stripped without a warning. This repo
+shipped with eight names declared and thirty-three read, so the documented
+`pnpm dev` started an API with no `AUTH_SECRET` — it died at boot, and every
+server render then failed with `ECONNREFUSED` against a dead `:4000` — plus a
+transcode worker with no `WORKER_ID` or lease settings. The check asserts
+everything the source reads is declared, everything `.env.example` documents is
+declared, every declared name is used, and every documented name is actually
+read. It found `TRANSCODE_MAX_ATTEMPTS` and `TRANSCODE_BACKOFF_SECONDS` being
+read by the worker while documented nowhere; both are in `.env.example` now.
+
+**Dev smoke (`scripts/dev-smoke.sh`).** The contract check proves the names are
+declared; it cannot prove they arrive. This boots the real `pnpm dev` and asserts
+`/health` reports Postgres, Redis, media storage and the worker green, then that
+`/courses/adaptive-video-streaming` renders the seeded course title — a
+status-code check alone would pass on a 200 error page. It launches with every
+name in `.env` stripped from the environment, so the app can only be configured
+by the repo, the way a fresh clone is. `ffmpeg` is reported but not required:
+everything except transcoding works without it.
 
 ### See it for yourself
 

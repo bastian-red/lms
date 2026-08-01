@@ -1,15 +1,57 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": [
-    "NODE_ENV",
+
+  // Turbo 2 defaults to strict env mode: a task's child process sees only the
+  // names below plus turbo's own system allowlist. Everything else is stripped
+  // silently, which is how this repo once started an API with no AUTH_SECRET and
+  // a transcode worker with no WORKER_ID or lease settings. The default is kept
+  // deliberately -- switching to "loose" would hide the next under-declaration
+  // instead of fixing this one. scripts/env-contract.mjs keeps these lists
+  // honest against .env.example and against what the source actually reads.
+
+  // Feeds the cache key. Only variables that change what gets BUILT belong here,
+  // and never a secret: turbo hashes the value, so a rotated SMTP password would
+  // invalidate every cached build and put the credential into the hash input.
+  "globalEnv": ["API_BASE_URL", "NEXT_PUBLIC_API_BASE_URL", "NODE_ENV"],
+
+  // Reaches the process without entering the cache key: runtime wiring, ports,
+  // credentials, operational tuning. Changing one of these must not force a
+  // rebuild, but the process must still see it.
+  "globalPassThroughEnv": [
+    "API_PORT",
+    "APP_BASE_URL",
+    "APP_VERSION",
+    "AUTH_SECRET",
+    "AUTH_URL",
+    "COMPLETION_THRESHOLD",
     "DATABASE_URL",
     "DIRECT_DATABASE_URL",
-    "REDIS_URL",
-    "AUTH_SECRET",
-    "MEDIA_ROOT",
     "FFMPEG_PATH",
-    "FFPROBE_PATH"
+    "FFPROBE_PATH",
+    "HLS_SEGMENT_SECONDS",
+    "JOB_LEASE_SECONDS",
+    "MAIL_FROM",
+    "MAX_UPLOAD_BYTES",
+    "MEDIA_ROOT",
+    "MEDIA_TICKET_TTL_MINUTES",
+    "PORT",
+    "RATE_LIMIT_AUTH",
+    "RATE_LIMIT_GLOBAL",
+    "RATE_LIMIT_MEDIA",
+    "REDIS_URL",
+    "SMTP_HOST",
+    "SMTP_PASSWORD",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "TRANSCODE_BACKOFF_SECONDS",
+    "TRANSCODE_MAX_ATTEMPTS",
+    "TRANSCODE_TIMEOUT_MS",
+    "WEB_PORT",
+    "WORKER_ID",
+    "WORKER_POLL_MS",
+    "WORKER_STALE_SECONDS"
   ],
+
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
