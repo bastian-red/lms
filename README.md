@@ -1,6 +1,6 @@
 # LMS — adaptive video streaming with access control that actually holds
 
-[![CI](https://github.com/bastian-red/project003--lms/actions/workflows/ci.yml/badge.svg)](https://github.com/bastian-red/project003--lms/actions/workflows/ci.yml)
+[![CI](https://github.com/bastian-red/lms/actions/workflows/ci.yml/badge.svg)](https://github.com/bastian-red/lms/actions/workflows/ci.yml)
 
 An online learning platform: courses, HLS video lessons, quizzes, PDF certificates
 and an instructor dashboard.
@@ -117,8 +117,8 @@ has — the last line of defence, and a violation there means the engine has a b
 ## Run it
 
 ```bash
-git clone https://github.com/bastian-red/project003--lms.git
-cd project003--lms
+git clone https://github.com/bastian-red/lms.git
+cd lms
 
 docker compose -f infra/docker-compose.yml up -d      # postgres 5435, redis 6382, mailhog 1028
 cp .env.example .env
@@ -303,7 +303,7 @@ to black. The charts rendered as solid dark slabs and all 116 tests still passed
 ## Architecture
 
 ```
-project003--lms/
+lms/
 ├── apps/web/                 Next.js 14 App Router — student, instructor, admin
 │   └── app/(learn)|(console) two design scopes, same URLs
 ├── apps/api/                 NestJS — every DB write, all media authorization
