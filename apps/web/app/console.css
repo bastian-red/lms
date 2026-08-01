@@ -1,28 +1,26 @@
 /*
  * Console — the instructor and admin surfaces.
  *
- * This is the Nothing language, kept deliberately rather than by inheritance.
- * The retention charts and the roster are the two screens in the product where
- * it was already doing the right thing: monochrome so the data carries the
- * only colour, hairline seams so rows compare cleanly, mono metadata so columns
- * align, radius 0 so nothing softens a dense grid.
+ * Scanning is the job here and density is the feature. An instructor arrives
+ * with a question — which lesson are people dropping out of, who is enrolled,
+ * did that transcode finish — and wants it answered off a grid without
+ * scrolling. Everything below follows from that: hairline seams so rows compare
+ * cleanly, monospace metadata so columns align, near-square corners so nothing
+ * softens a dense table, uppercase region labels as scanning anchors.
  *
- * It is the wrong language for reading a lesson, which is why Learn exists.
- * Here, scanning is the job and density is the feature.
+ * Cool slate rather than warm paper, which is Learn's. The colour temperature
+ * is doing real work: it is how someone knows, before reading a word, which of
+ * the two surfaces they are looking at.
  *
- * The palette itself lives in globals.css `:root`, because Console is the
- * default. This file holds what makes Console *Console*: the geometry, the
- * texture, and the components only it renders.
+ * The palette lives in globals.css `:root`, because Console is the default.
+ * This file holds what makes Console *Console*: the geometry and the components
+ * only it renders.
  */
 
 [data-surface='console'] {
-  --radius: 0px;
+  --radius: 2px;
   --t-body: var(--t-base);
 
-  /* The faint dot-matrix texture. Console only: behind a page of prose it
-     competes with the text, which is the opposite of what Learn needs. */
-  background-image: var(--dot-grid);
-  background-size: 22px 22px;
   min-height: 100vh;
 }
 
@@ -50,9 +48,18 @@
   margin-bottom: var(--s-2);
 }
 [data-surface='console'] .stat .value {
-  font-family: var(--ff-dot);
+  font-family: var(--ff-mono);
   font-size: var(--t-2xl);
   line-height: var(--lh-tight);
+}
+
+/* The console's nav keeps the uppercase mono: on this surface the links are
+   region labels being scanned, not words being read. */
+[data-surface='console'] .nav .links {
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
 }
 
 /* Headings stay uppercase here. On a dashboard they are labels for regions, not
@@ -63,10 +70,37 @@
   text-transform: uppercase;
 }
 
+/* The table alternative under each retention curve. Collapsed by default so it
+   does not compete with the chart, but present in the DOM and keyboard
+   reachable. The chart is a graphic; this is where the numbers can actually be
+   read one at a time, by a screen reader or by anyone checking a value. */
+[data-surface='console'] .chart-table {
+  border-top: 1px solid var(--border);
+  font-size: var(--t-xs);
+}
+[data-surface='console'] .chart-table > summary {
+  padding: var(--s-2) var(--s-3);
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--ff-mono);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+}
+[data-surface='console'] .chart-table > summary:hover {
+  color: var(--text);
+}
+[data-surface='console'] .chart-table .table-wrap {
+  max-height: 260px;
+  overflow: auto;
+  padding: 0 var(--s-3) var(--s-3);
+}
+
 [data-surface='console'] .chart-frame {
+  /* <figure> carries a UA margin. Reset it here rather than in the component,
+     because the element choice is semantics and the spacing is design. */
+  margin: 0 0 var(--s-5);
   border: 1px solid var(--border);
   padding: var(--s-4) var(--s-2) var(--s-2) 0;
-  margin-bottom: var(--s-5);
 }
 [data-surface='console'] .chart-caption {
   font-family: var(--ff-mono);

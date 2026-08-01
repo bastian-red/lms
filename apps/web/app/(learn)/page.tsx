@@ -33,8 +33,9 @@ export default async function CatalogPage() {
       <section className="hero">
         {/* The eyebrow is content and lives in the markup. It used to be a CSS
             `content: '// SHOP'` inherited from an e-commerce template, which
-            rendered literally above the heading on this page. */}
-        <span className="eyebrow">// Courses</span>
+            rendered literally above the heading on this page. The `//` went
+            with the design language it belonged to. */}
+        <span className="eyebrow">Courses</span>
         <h1>Learn it properly</h1>
         <p>
           Adaptive HLS with AES-128 encrypted segments, keys handed out per request, and progress

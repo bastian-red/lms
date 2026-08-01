@@ -23,16 +23,28 @@
  */
 
 [data-surface='learn'] {
-  --radius: 4px;
+  --radius: 8px;
 
-  /* Warm dark. Same structure as Console's palette, shifted off neutral. */
+  /* Warm paper against Console's cool slate. Not decoration: this is the
+     surface people stare at longest, and pure white on pure black haloes for
+     readers with astigmatism.
+
+     The accent is teal, and it means one thing here — progress. Console's blue
+     means "control"; a student never sees it, and an instructor never sees this
+     one. Two accents that never meet is cheaper than one accent that has to
+     mean two things. */
   --bg: #14120f;
   --surface: #1c1916;
-  --surface-2: #24201c;
-  --border: #35302a;
-  --border-strong: #6b6259;
+  --surface-2: #241f1a;
+  --border: #322c25;
+  /* >=3:1 against all three surfaces, not just --bg. */
+  --border-strong: #7d7466;
   --text: #f7f3ec;
   --muted: #b0a89d;
+
+  --accent: #5eead4;
+  --accent-ink: #5eead4;
+  --on-accent: #0d1a18;
 
   background-color: var(--bg);
   color: var(--text);
@@ -41,13 +53,24 @@
 
 @media (prefers-color-scheme: light) {
   [data-surface='learn'] {
-    --bg: #faf7f2;
+    --bg: #fbf8f3;
     --surface: #ffffff;
-    --surface-2: #f1ece3;
-    --border: #e2dbd0;
-    --border-strong: #8b8377;
-    --text: #191714;
-    --muted: #605850;
+    --surface-2: #f2ece1;
+    --border: #e6ded1;
+    --border-strong: #8a8175;
+    --text: #1a1714;
+    --muted: #5a5248;
+
+    --accent: #0f766e;
+    --accent-ink: #0f766e;
+    --on-accent: #ffffff;
+
+    /* Same luminance gap as Console's, on warm paper. */
+    --state-pass: #04502c;
+    --state-fail: #c9303a;
+    --state-warn: #8a5300;
+    --state-info: #1554a8;
+    --state-idle: #5a5248;
   }
 }
 
@@ -60,11 +83,149 @@
   max-width: var(--measure);
 }
 
-/* Sentence case: these are things a person reads, not column headers. */
+/* Sentence case, and the serif: these are things a person reads, not column
+   headers. Source Serif 4 is a variable face with a real optical-size axis, so
+   a course title at 52px and a lesson heading at 20px are shaped differently
+   rather than being the same drawing scaled. */
 [data-surface='learn'] h1,
 [data-surface='learn'] h2,
 [data-surface='learn'] h3 {
+  font-family: var(--ff-display);
+  font-weight: 600;
   text-transform: none;
+}
+
+/* Lesson prose too. This is the one place in the product where someone reads
+   continuously for twenty minutes, which is what the face is for. */
+[data-surface='learn'] .prose,
+[data-surface='learn'] .prose p,
+[data-surface='learn'] .prose li {
+  font-family: var(--ff-display);
+}
+
+/* Metadata labels lose the uppercase and the wide tracking.
+ *
+ * The file header claims sentence case as a principle and then five components
+ * shouted "COVERAGE", "RENDITION", "FOUNDATIONS" at a student anyway, inherited
+ * from a language built for dashboards. Uppercase costs roughly a tenth of
+ * reading speed because it destroys word shape, and none of these are being
+ * scanned in a column — they are being read once, next to the thing they label.
+ *
+ * The *figures* keep the mono face, because digits still have to line up. Only
+ * the words change.
+ */
+[data-surface='learn'] .eyebrow,
+[data-surface='learn'] .course-meta,
+[data-surface='learn'] .player-bar,
+[data-surface='learn'] .progress-line,
+[data-surface='learn'] .syllabus-module > header {
+  font-family: var(--ff-ui);
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* …with the numbers exempted, since a column of durations still has to align. */
+[data-surface='learn'] .course-meta strong,
+[data-surface='learn'] .player-bar strong,
+[data-surface='learn'] .progress-line b,
+[data-surface='learn'] .lesson-time {
+  font-family: var(--ff-mono);
+}
+
+/* ==========================================================================
+   Theatre mode
+
+   A lesson page is a video with a syllabus rail and a transcript around it, and
+   for the twenty minutes someone is watching, only one of those matters. The
+   surround dims to --surface so the frame is the brightest thing on screen, and
+   the frame itself gets a soft lift rather than a hairline: a 1px border around
+   a black rectangle reads as a bug on a dark canvas.
+
+   Not a mode anyone has to switch on. There is no state to remember and nothing
+   to discover, which is the whole point.
+   ========================================================================== */
+
+[data-surface='learn'] .player-layout {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: var(--s-5);
+  gap: var(--s-5);
+}
+@media (max-width: 900px) {
+  [data-surface='learn'] .player-layout {
+    padding: var(--s-3);
+  }
+}
+[data-surface='learn'] .player-frame {
+  border: none;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%), 0 18px 48px rgb(0 0 0 / 22%);
+}
+[data-surface='learn'] .player-bar {
+  border: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: var(--surface);
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: var(--ff-ui);
+  font-size: var(--t-sm);
+}
+/* The rail beside the video is a list to glance at, not to read, so it stays on
+   the interface face and keeps its own surface against the dimmed surround. */
+[data-surface='learn'] .player-layout .syllabus {
+  background: var(--surface);
+  margin-top: 0;
+}
+
+/* ==========================================================================
+   Progress rings
+
+   Momentum is the reason anyone comes back to a course, so on a catalogue of
+   several it has to be readable at a glance rather than after reading a
+   sentence. A ring is a conic-gradient on one element — no SVG, no library —
+   and the percentage sits inside it as text, so the number survives greyscale
+   and is what a screen reader gets from the label.
+   ========================================================================== */
+
+[data-surface='learn'] .ring {
+  --ring-size: 44px;
+  /* Declared, not only set inline by the component. Without a default here a
+     ring rendered without the prop resolves `calc(var(--pct) * 1%)` to nothing,
+     which makes the whole conic-gradient invalid and paints no ring at all —
+     0% and "broken" would look identical. lib/tokens.test.ts fails on any
+     var() with no declaration, which is how this was caught. */
+  --pct: 0;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--ff-mono);
+  font-size: var(--t-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  /* --pct is set inline by the component: it is data, not design. */
+  background:
+    conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--surface-2) 0);
+  position: relative;
+}
+[data-surface='learn'] .ring::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+[data-surface='learn'] .ring > span {
+  position: relative;
+}
+/* A finished course reads as finished without needing the number. */
+[data-surface='learn'] .ring.complete {
+  background: var(--accent);
+}
+[data-surface='learn'] .ring.complete > span {
+  color: var(--accent-ink);
 }
 
 /* ==========================================================================
@@ -120,7 +281,7 @@
   padding-top: var(--s-3);
 }
 [data-surface='learn'] .course-meta strong {
-  font-family: var(--ff-dot);
+  font-family: var(--ff-mono);
   font-size: var(--t-base);
   color: var(--text);
   font-weight: 400;
@@ -240,7 +401,7 @@
   content: '·';
 }
 [data-surface='learn'] .lesson-time {
-  font-family: var(--ff-dot);
+  font-family: var(--ff-mono);
   font-size: var(--t-base);
   color: var(--muted);
 }
@@ -291,7 +452,7 @@
   border-radius: var(--radius);
   margin: 0 0 var(--s-2);
   cursor: pointer;
-  font-family: var(--ff-display);
+  font-family: var(--ff-ui);
   font-size: var(--t-base);
   text-transform: none;
   letter-spacing: normal;
@@ -340,7 +501,7 @@
   color: var(--state-fail);
 }
 [data-surface='learn'] .score {
-  font-family: var(--ff-dot);
+  font-family: var(--ff-mono);
   font-size: 44px;
   line-height: var(--lh-tight);
 }
@@ -362,7 +523,7 @@
   background: var(--surface);
 }
 [data-surface='learn'] .certificate .serial {
-  font-family: var(--ff-dot);
+  font-family: var(--ff-mono);
   font-size: var(--t-xl);
   letter-spacing: var(--track-wide);
   margin: var(--s-4) 0;

@@ -72,9 +72,9 @@ describe('design tokens', () => {
   });
 
   it('every referenced token is declared', () => {
-    // next/font injects --font-display / --font-mono / --font-dot at runtime;
+    // next/font injects --font-display / --font-ui / --font-mono at runtime;
     // they are declared in layout.tsx, not in CSS.
-    const external = new Set(['--font-display', '--font-mono', '--font-dot']);
+    const external = new Set(['--font-display', '--font-ui', '--font-mono']);
 
     const dangling = [...referenced.entries()]
       .filter(([token]) => !declared.has(token) && !external.has(token))

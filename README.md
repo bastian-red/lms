@@ -192,18 +192,48 @@ into two route groups, each with its own scope:
 
 | | `(learn)` — student | `(console)` — instructor, admin |
 |---|---|---|
-| Palette | warm neutrals, off-black / off-white | monochrome, OLED black, dot-grid |
+| Canvas | warm paper `#fbf8f3` / `#14120f` | cool slate `#f8fafc` / `#0b1220` |
+| Accent | teal — it means *progress* | blue — it means *control* |
+| Type | Source Serif 4 for prose and headings | IBM Plex Sans throughout, no serif |
+| Figures | JetBrains Mono, tabular | JetBrains Mono, tabular |
 | Body | 17px, sentence case, ≤68ch measure | 15px, uppercase mono metadata |
-| Geometry | 4px radius, real gaps | radius 0, 1px hairline seams |
-| State | semantic colour + glyph + word | monochrome; data carries the colour |
+| Geometry | 8px radius, real gaps | 2px radius, 1px hairline seams |
+| State | semantic colour + glyph + word | same contract, denser |
+
+Two accents that never meet is cheaper than one accent that has to mean two
+things: a student never sees the blue and an instructor never sees the teal. The
+colour temperature is doing real work — it is how someone knows which surface
+they are on before reading a word.
 
 Route groups do not appear in the URL, so the split cost nothing in routing.
 They share `globals.css`: one spacing scale, one type scale, one focus ring, one
 motion timing, one accessibility contract — which is what stops it reading as
 two apps bolted together.
 
-**What this fixed.** The old language was inherited from an e-commerce template
-and it was actively hurting the learning surfaces. `.choice` is a `<label>`, so
+**Why it changed again.** The two scopes were right; what they wore was not.
+Both surfaces were dressed in the same monochrome, uppercase, `#ff0000`-accented
+language — the same one two sibling repos in this portfolio were also wearing, to
+the byte. It told a reader nothing about *this* product, and it left the Learn
+scope shouting "COVERAGE" and "RENDITION" at a student in the middle of a lesson,
+which its own file header had already argued against.
+
+Beyond the palette, three structural changes:
+
+- **Theatre mode.** The lesson page dims its surround to `--surface-2` and lifts
+  the video frame on a soft shadow, so for the twenty minutes someone is watching
+  the frame is the brightest thing on screen. Nothing to switch on and no state to
+  remember, which is the point.
+- **Progress rings.** On a list of enrolled courses the question is "which am I
+  nearly done with", and a horizontal bar answers that only after its label has
+  been read. `components/progress-ring.tsx` is a conic-gradient on one element —
+  no SVG, no charting library — with the percentage inside it as text.
+- **The retention charts got rebuilt** against the `dataviz` procedure: one
+  series so no legend, the accent for the curve and a reserved status colour for
+  the drop marker, a pinned 0–100 axis so two lessons stay comparable, and a
+  `<details>` table under every curve carrying the same numbers.
+
+**What the earlier pass fixed.** The language before that was inherited from an
+e-commerce template and was actively hurting the learning surfaces. `.choice` is a `<label>`, so
 quiz answers inherited the global label rule and rendered in dim uppercase mono;
 the global `input { width: 100% }` stretched each radio across its row and shoved
 the answer text to the far right. `--ok` resolved to plain white in dark mode, so
@@ -225,11 +255,21 @@ deficiency, which on a quiz means both answers look identical.
 | axe-core violations, 15 routes × 2 schemes | **56 nodes**, 3 rules | **0** | `e2e/tests/a11y.spec.ts` |
 | Token pairs below WCAG AA | 22 contrast failures from one token | **0** | `apps/web/lib/contrast.test.ts` |
 | `var(--x)` references resolving to nothing | 2 (silent black charts) | **0** | `apps/web/lib/tokens.test.ts` |
+| The two surfaces still looking alike | — | measured | `apps/web/lib/identity.test.ts` |
 
 The contrast gate parses the real stylesheets rather than a copy of the palette,
 so it cannot pass against values the browser is not using. It was written before
 the new colours were chosen, and the colours were then tuned until it passed —
 contrast is arithmetic, and arithmetic does not belong in anyone's eye.
+
+The identity gate is newer and answers a different question. This repo is one of
+a portfolio, and the portfolio's failure mode is that every project ends up
+wearing whatever language the last one wore. So `identity.test.ts` pins both
+palettes, all three typefaces and the two radii, and measures the claim the split
+rests on: that Learn's canvas is warm (red channel above blue) and the console's
+is not, in both schemes, and that the two accents are different colours. It also
+fails on any reappearance of `#ff0000`, the accent all three sibling repos once
+shared.
 
 The token gate exists because of a bug this redesign shipped and then caught:
 renaming `--panel-2` to `--surface-2` left `retention-charts.tsx` passing
